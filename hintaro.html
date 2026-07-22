@@ -379,31 +379,57 @@ body::after{
 
 /* ============================= MOBILE ============================= */
 @media (max-width:600px){
-  body{padding:10px 8px 30px;}
+  body{padding:8px 7px 20px;}
+
+  /* The fixed Full Screen pill floats over the top of the page; on mobile the .wrap spans nearly
+     the full width so it would otherwise collide with the status bar's rightmost items. Reserve
+     clearance instead of letting them overlap. */
+  .wrap{padding-top:40px;}
 
   /* Touch targets: bump anything a thumb needs to tap below the ~44px comfort line. */
-  .btn, .icon-btn{min-height:46px;}
-  .step-btn{width:46px; height:46px; font-size:1.15rem;}
-  .chip-btn{padding:9px 14px; font-size:.5rem;}
-  .tab-btn{padding:10px 6px;}
-  .segmented button{padding:11px 4px;}
+  .btn, .icon-btn{min-height:44px;}
+  .step-btn{width:42px; height:42px; font-size:1.05rem;}
+  .chip-btn{padding:8px 12px; font-size:.48rem;}
+  .tab-btn{padding:9px 6px;}
+  .segmented button{padding:9px 4px;}
+
+  /* Tighten every panel/pod/row's own padding and inter-panel spacing — a real phone viewport
+     (browser chrome included) has meaningfully less vertical room than a desktop window. */
+  .panel{padding:7px 9px; margin-bottom:6px;}
+  .table-area{gap:6px; margin-bottom:6px;}
+  .pod{padding:6px 8px;}
+  .pod-head{margin-bottom:3px;}
+  .chip-ledger{min-height:26px; margin-bottom:4px;}
+  .chip-coin{width:18px; height:7px; margin-top:-4px;}
+  .dice-row{gap:4px;}
+  .die{width:clamp(38px,11vw,48px); height:clamp(38px,11vw,48px);}
+  .icon-row{margin:4px 0;}
+  .wager-block{margin-bottom:5px; gap:4px;}
+
+  /* Status bar: shrink the value text and stop long phase names ("Throw the Chazwa") from forcing
+     the row to wrap onto a second line. */
+  .status-bar{gap:4px 10px; padding:7px 9px;}
+  .status-item{min-width:0;}
+  .status-item .val{font-size:.66rem; max-width:30vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
   /* The four center-row blocks (Your Hand / Pot / Hintaro Die / Rankings) wrap unevenly at narrow
      widths since Rankings is inherently wider than the other three. Force a clean 2x2 grid instead,
      with the two "core" objects (Pot, Hintaro Die) on top and the two reference panels below. */
-  .center-area{display:grid; grid-template-columns:1fr 1fr; gap:12px 10px; align-items:start; justify-items:center;}
+  .center-area{display:grid; grid-template-columns:1fr 1fr; gap:8px 6px; align-items:start; justify-items:center; padding:4px 0;}
   .pot-display{order:1;}
   .hintaro-die-wrap{order:2;}
   .sg-explain{order:3; max-width:none; width:100%;}
   .sg-rankings{order:4; width:100%;}
+  .sg-rows{gap:1px;}
 
   /* A little breathing room back for the smallest legible text. */
   .sg-name, .pod-rank, .cancel-label{font-size:.44rem;}
 }
 @media (max-width:380px){
-  .pod{min-width:130px;}
-  .die{width:clamp(40px,13vw,52px); height:clamp(40px,13vw,52px);}
+  .pod{min-width:130px; padding:5px 7px;}
+  .die{width:clamp(34px,11vw,44px); height:clamp(34px,11vw,44px);}
   .chip-ledger{gap:6px;}
+  .status-item .val{font-size:.6rem; max-width:26vw;}
 }
 </style>
 </head>
@@ -624,7 +650,7 @@ body::after{
 /* Update this to your published GitHub Pages URL once the repo is live — the
    corner "Full Screen" link opens this in a new tab so players embedded in a
    Squarespace iframe can pop out to the full, unconstrained page. */
-const FULLSCREEN_URL = 'https://fourpointfive.github.io/games/hintaro.html';
+const FULLSCREEN_URL = 'https://fourpointfivecantina-debug.github.io/games/hintaro.html';
 document.getElementById('fullscreenLink').href = FULLSCREEN_URL;
 
 /* ============================= AUDIO ============================= */
@@ -1285,8 +1311,9 @@ function render(){
 
   const bots=G.players.filter(p=>!p.isHuman);
   document.getElementById('botRow').innerHTML = bots.map(p=>renderPod(p,false)).join('');
-  document.getElementById('youPod').innerHTML = renderPod(G.players[0],true);
+  document.getElementById('youPod').innerHTML = renderPodInner(G.players[0]);
   document.getElementById('youPod').className = 'pod you'+(G.players[0].id===G.hintaronSeat?' hintaron':'')+(G.players[0].active&&!G.players[0].folded&&isCurrentActor(0)?' active-turn':'')+(G.players[0].folded?' folded':'');
+  document.getElementById('youPod').setAttribute('data-seat', G.players[0].id);
 
   renderScoreGuide();
   renderActionPanel();
@@ -1335,14 +1362,12 @@ function isCurrentActor(seat){
   if(G.phase==='reroll') return G.rerollOrder[G.rerollIdx]===seat;
   return false;
 }
-function renderPod(p,isYou){
+function renderPodInner(p){
   const showResult = G.phase==='resolve';
   const noRankNote = showResult ? explainNoRank(p.finalT,p.finalK) : '';
   const rankInfo = showResult ? (p.finalName+' ('+p.finalT+'T/'+p.finalK+'K)'+(noRankNote?' — '+noRankNote:'')) : '';
   const isWinner = showResult && p.finalRank>0 && !p.folded && G.pot===0;
-  let cls='pod'+(p.id===G.hintaronSeat?' hintaron':'')+(isCurrentActor(p.id)&&!isYou?' active-turn':'')+(p.folded?' folded':'');
-  return '<div class="'+cls+'" data-seat="'+p.id+'">'+
-    '<div class="pod-head"><span class="pod-name">'+p.name+(p.chips<=0?' (out)':'')+'</span>'+
+  return '<div class="pod-head"><span class="pod-name">'+p.name+(p.chips<=0?' (out)':'')+'</span>'+
       (p.bet>0?'<span class="pot-chip">+'+p.bet+'</span>':'')+
     '</div>'+
     '<div class="chip-ledger">'+
@@ -1357,8 +1382,11 @@ function renderPod(p,isYou){
       const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
       return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
     }).join('')+'</div>'+
-    (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':'')) +
-    '</div>';
+    (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':''));
+}
+function renderPod(p,isYou){
+  let cls='pod'+(p.id===G.hintaronSeat?' hintaron':'')+(isCurrentActor(p.id)&&!isYou?' active-turn':'')+(p.folded?' folded':'');
+  return '<div class="'+cls+'" data-seat="'+p.id+'">'+renderPodInner(p)+'</div>';
 }
 
 function renderActionPanel(){
