@@ -63,12 +63,16 @@ body::after{
 .status-item .val.gold{color:var(--sh-gold);}
 
 .table-area{width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; margin-bottom:10px;}
-.bot-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+/* Always exactly one row, however many droids are seated — the column count tracks --bot-count
+   (set from JS) instead of relying on flex-wrap, which unpredictably wraps 3 pods into a 2+1
+   layout and wastes a whole extra row of vertical space. */
+.bot-row{display:grid; grid-template-columns:repeat(var(--bot-count,2), 1fr); gap:8px;}
 .pod{
   background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
-  border:1px solid #2a4b55; border-radius:10px; padding:8px 10px; flex:1 1 150px; min-width:140px; max-width:220px;
+  border:1px solid #2a4b55; border-radius:10px; padding:8px 10px;
   position:relative; transition:box-shadow .25s, border-color .25s;
 }
+.bot-row .pod{min-width:0; max-width:none;}
 .pod.you{max-width:100%; flex:1 1 100%; display:flex; flex-direction:column; align-items:center;}
 .pod.you .pod-head{width:100%; max-width:320px; justify-content:center; gap:10px;}
 .pod.you .chip-ledger{width:100%; max-width:320px;}
@@ -327,21 +331,25 @@ body::after{
 .settings-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;}
 .settings-row label{font-size:.55rem; letter-spacing:.08em; color:var(--sh-ink);}
 
-.winner-banner{
-  width:100%; max-width:600px; box-sizing:border-box; text-align:center;
-  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.15) 0%, var(--sh-panelB) 70%);
-  border:1.5px solid var(--sh-gold); border-radius:10px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  max-height:0; padding:0 14px; margin-bottom:0; border-width:0; overflow:hidden;
-  opacity:0; pointer-events:none;
-  transition:max-height .28s ease, opacity .22s ease, padding .28s ease, margin .28s ease, border-width .28s ease;
+/* Win/no-win announcements used to live in a separate banner above the status bar — reserving
+   permanent space for it wasted room, but animating it in/out instead made the whole page jump.
+   Now the announcement is an overlay INSIDE the Rankings panel: that panel's size never changes,
+   so nothing above or below it ever shifts. Tap the overlay to dismiss and see the ranked list
+   underneath (with the winning row already highlighted). */
+.sg-rankings{position:relative; min-height:118px;}
+.sg-announce{
+  position:absolute; inset:0; z-index:5; box-sizing:border-box;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  padding:10px; border-radius:8px; cursor:pointer;
+  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.18) 0%, var(--sh-panelB) 75%);
+  border:1.5px solid var(--sh-gold);
+  opacity:0; pointer-events:none; transform:scale(.96);
+  transition:opacity .18s ease, transform .18s ease;
 }
-.winner-banner.show{
-  max-height:110px; padding:14px; margin-bottom:10px; border-width:1.5px;
-  opacity:1; pointer-events:auto;
-}
-.winner-banner .wtitle{font-size:1rem; font-weight:900; letter-spacing:.14em; color:var(--sh-gold); text-shadow:0 0 18px rgba(201,168,76,.5);}
-.winner-banner .wsub{font-size:.55rem; color:var(--sh-steel); margin-top:4px;}
+.sg-announce.show{opacity:1; pointer-events:auto; transform:scale(1);}
+.sg-announce-title{font-size:.85rem; font-weight:900; letter-spacing:.1em; color:var(--sh-gold); text-shadow:0 0 16px rgba(201,168,76,.5);}
+.sg-announce-sub{font-size:.46rem; line-height:1.4; color:var(--sh-steel); margin-top:5px;}
+.sg-announce-tap{font-size:.4rem; letter-spacing:.12em; text-transform:uppercase; color:var(--sh-teal); opacity:.8; margin-top:9px;}
 
 .start-overlay{
   position:fixed; inset:0; z-index:20; background:rgba(5,9,13,.92); display:flex; align-items:center; justify-content:center; padding:16px;
@@ -403,6 +411,18 @@ body::after{
   .chip-coin{width:18px; height:7px; margin-top:-4px;}
   .dice-row{gap:4px;}
   .die{width:clamp(38px,11vw,48px); height:clamp(38px,11vw,48px);}
+
+  /* Opponent pods run three-wide when there are 3 droids — every dimension needs to shrink further
+     than the "you" pod so three columns fit a phone width without crowding or wrapping. */
+  .bot-row{gap:5px;}
+  .bot-row .pod{padding:5px 5px;}
+  .bot-row .pod-name{font-size:.54rem;}
+  .bot-row .chip-ledger{gap:4px; min-height:20px; margin-bottom:3px;}
+  .bot-row .chip-coin{width:14px; height:6px; margin-top:-3px;}
+  .bot-row .credit-num{font-size:.42rem;}
+  .bot-row .dice-row{gap:3px;}
+  .bot-row .die{width:clamp(26px,9vw,36px); height:clamp(26px,9vw,36px); border-radius:6px;}
+  .bot-row .pod.hintaron::before{font-size:.34rem; padding:1px 4px; top:-7px; right:5px;}
   .icon-row{margin:4px 0;}
   .wager-block{margin-bottom:5px; gap:4px;}
 
@@ -477,11 +497,6 @@ body::after{
 </svg>
 
 <div class="wrap">
-  <div class="winner-banner" id="winnerBanner">
-    <div class="wtitle" id="winnerTitle">—</div>
-    <div class="wsub" id="winnerSub">—</div>
-  </div>
-
   <div class="panel status-bar">
     <div class="status-item"><span class="lbl">Round</span><span class="val" id="hudRound">1</span></div>
     <div class="status-item"><span class="lbl">Hintaron</span><span class="val gold" id="hudHintaron">—</span></div>
@@ -528,6 +543,11 @@ body::after{
             <span class="sg-dice"><svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></span>
             <span class="sg-name">Kulro-Kulro</span>
           </div>
+        </div>
+        <div class="sg-announce" id="sgAnnounce" onclick="dismissAnnounce()">
+          <div class="sg-announce-title" id="sgAnnounceTitle">—</div>
+          <div class="sg-announce-sub" id="sgAnnounceSub">—</div>
+          <div class="sg-announce-tap">tap to see rankings</div>
         </div>
       </div>
     </div>
@@ -784,7 +804,20 @@ function beginGame(){
 
 function restartGame(){
   document.getElementById('startOverlay').style.display='flex';
-  document.getElementById('winnerBanner').classList.remove('show');
+  dismissAnnounce();
+}
+
+/* Win/no-win/out-of-credits messages surface as an overlay INSIDE the fixed-size Rankings panel
+   rather than a separate banner — the panel's box never changes size, so nothing above or below
+   it ever jumps. Tapping the overlay (or starting the next round) dismisses it. */
+function showAnnounce(title, sub){
+  document.getElementById('sgAnnounceTitle').textContent=title;
+  document.getElementById('sgAnnounceSub').textContent=sub;
+  document.getElementById('sgAnnounce').classList.add('show');
+}
+function dismissAnnounce(){
+  const el=document.getElementById('sgAnnounce');
+  if(el) el.classList.remove('show');
 }
 
 function logMsg(msg,cls){
@@ -808,7 +841,7 @@ function startRound(firstRound){
   G.potCarriesOver=false;        // regardless of whether the cosmetic scoop animation finished in time
   G.currentBet=0; G.betRaised=false; G.hintaroFace=null; G.phase='ante'; G.cancelTargets={}; G.winningRank=0;
   G.chazwaThrowing=false; G.hintaroThrowing=false; // reset re-entrancy guards for the new round
-  document.getElementById('winnerBanner').classList.remove('show');
+  dismissAnnounce();
   if(!firstRound) logMsg('— Round '+G.round+' begins. '+P[G.hintaronSeat].name+' is Hintaron. —','hi');
   else logMsg(P[G.hintaronSeat].name+' is the first Hintaron.','hi');
   doAntePhase();
@@ -1177,9 +1210,7 @@ function resolveRound(){
     HAudio.win();
     // keep the pot pile visually full while coins scoop out to the winner(s), then clear it
     const roundSnapshot=G.round;
-    document.getElementById('winnerTitle').textContent=winnerMsg;
-    document.getElementById('winnerSub').textContent=subMsg;
-    document.getElementById('winnerBanner').classList.add('show');
+    showAnnounce(winnerMsg, subMsg);
     render();
     winners.forEach((w,idx)=>{
       const amt=(idx===0)? share+leftover : share;
@@ -1190,9 +1221,7 @@ function resolveRound(){
     }, 550+winners.length*160);
     return;
   }
-  document.getElementById('winnerTitle').textContent=winnerMsg;
-  document.getElementById('winnerSub').textContent=subMsg;
-  document.getElementById('winnerBanner').classList.add('show');
+  showAnnounce(winnerMsg, subMsg);
   render();
 }
 function nextRound(){
@@ -1204,9 +1233,7 @@ function nextRound(){
   G.hintaronSeat=ns;
   const human=G.players[0];
   if(human.chips<=0){
-    document.getElementById('winnerTitle').textContent='OUT OF CREDITS';
-    document.getElementById('winnerSub').textContent='Start a new game to keep playing.';
-    document.getElementById('winnerBanner').classList.add('show');
+    showAnnounce('OUT OF CREDITS','Start a new game to keep playing.');
     return;
   }
   startRound(false);
@@ -1310,7 +1337,9 @@ function render(){
   document.getElementById('hintaroDie').innerHTML = G.hintaroFace? dieIconMarkup(G.hintaroFace) : '<svg><use href="#ic-blank"/></svg>';
 
   const bots=G.players.filter(p=>!p.isHuman);
-  document.getElementById('botRow').innerHTML = bots.map(p=>renderPod(p,false)).join('');
+  const botRowEl=document.getElementById('botRow');
+  botRowEl.style.setProperty('--bot-count', bots.length);
+  botRowEl.innerHTML = bots.map(p=>renderPod(p,false)).join('');
   document.getElementById('youPod').innerHTML = renderPodInner(G.players[0]);
   document.getElementById('youPod').className = 'pod you'+(G.players[0].id===G.hintaronSeat?' hintaron':'')+(G.players[0].active&&!G.players[0].folded&&isCurrentActor(0)?' active-turn':'')+(G.players[0].folded?' folded':'');
   document.getElementById('youPod').setAttribute('data-seat', G.players[0].id);
