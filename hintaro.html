@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1116">
+<title>HINTARO — Cantina Dice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sh-bg:#0b1116; --sh-hud:#0f1b23; --sh-ring:#0c2229; --sh-edge:#14545f;
+  --sh-teal:#16d1e1; --sh-steel:#9fb8c3; --sh-ink:#e8f4f6; --sh-alert:#ff4d4d;
+  --sh-gold:#c9a84c; --sh-outline:rgba(255,255,255,.18);
+  --sh-panelA:#061017; --sh-panelB:#041821;
+  --sh-tealDeep:#0fbac8; --sh-tealHi:#9ff0ff; --sh-tealBtn:#8af3ff;
+  --sh-alertDim:rgba(255,77,77,.72); --sh-alertBg:rgba(255,77,77,.08);
+  --font:'Orbitron', ui-monospace, monospace;
+}
+*{box-sizing:border-box;}
+html,body{background:#05090d;margin:0;padding:0;}
+.fullscreen-link{
+  position:fixed; top:10px; right:10px; z-index:25;
+  display:flex; align-items:center; gap:5px;
+  background:var(--sh-hud); border:1px solid var(--sh-edge); border-radius:20px;
+  padding:7px 11px; font-size:.5rem; letter-spacing:.08em; color:var(--sh-teal);
+  text-decoration:none; text-transform:uppercase; font-family:var(--font);
+  box-shadow:0 2px 10px rgba(0,0,0,.35);
+  transition:filter .15s ease, transform .15s ease;
+}
+.fullscreen-link:hover{filter:brightness(1.25);}
+.fullscreen-link:active{transform:scale(.94);}
+.fullscreen-link .fs-icon{font-size:.75rem; line-height:1;}
+@media (max-width:380px){ .fullscreen-link .fs-label{display:none;} .fullscreen-link{padding:8px; border-radius:50%;} }
+body{
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  font-family:var(--font); color:var(--sh-ink); position:relative;
+  padding:14px 10px 40px; overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:repeating-linear-gradient(0deg, rgba(232,244,246,.03) 0px, rgba(232,244,246,.03) 1px, transparent 2px, transparent 4px);
+  opacity:.10; mix-blend-mode:screen;
+}
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(circle at 50% 40%, rgba(22,209,225,.06) 0%, transparent 45%, rgba(0,0,0,.50) 78%, rgba(0,0,0,.68) 100%);
+}
+.wrap{position:relative; z-index:1; width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center;}
+
+.panel{
+  width:100%; max-width:600px; background:var(--sh-hud); border:1px solid rgba(159,184,195,.2);
+  border-radius:10px; padding:10px 12px; margin-bottom:10px;
+}
+.status-bar{
+  display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between;
+  border-top:2px solid var(--sh-teal); box-shadow:inset 0 1px 0 rgba(22,209,225,.06);
+}
+.status-item{display:flex; flex-direction:column; gap:2px; align-items:center; min-width:70px;}
+.status-item .lbl{font-size:.44rem; letter-spacing:.2em; color:var(--sh-steel); text-transform:uppercase;}
+.status-item .val{font-size:.85rem; font-weight:900; color:var(--sh-tealHi);}
+.status-item .val.gold{color:var(--sh-gold);}
+
+.table-area{width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; margin-bottom:10px;}
+.bot-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+.pod{
+  background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
+  border:1px solid #2a4b55; border-radius:10px; padding:8px 10px; flex:1 1 150px; min-width:140px; max-width:220px;
+  position:relative; transition:box-shadow .25s, border-color .25s;
+}
+.pod.you{max-width:100%; flex:1 1 100%; display:flex; flex-direction:column; align-items:center;}
+.pod.you .pod-head{width:100%; max-width:320px; justify-content:center; gap:10px;}
+.pod.you .chip-ledger{width:100%; max-width:320px;}
+.pod.you .dice-row{justify-content:center;}
+.pod.you .pod-rank{text-align:center;}
+.pod.active-turn{border-color:var(--sh-teal); box-shadow:0 0 18px rgba(22,209,225,.25);}
+.pod.folded{opacity:.42;}
+.pod.hintaron::before{
+  content:"HINTARON"; position:absolute; top:-9px; right:8px; background:var(--sh-gold); color:var(--sh-bg);
+  font-size:.4rem; font-weight:900; letter-spacing:.16em; padding:2px 6px; border-radius:6px;
+  box-shadow:0 0 12px rgba(201,168,76,.5);
+}
+.pod-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; gap:6px;}
+.pod-name{font-size:.62rem; font-weight:900; letter-spacing:.1em; color:var(--sh-ink);}
+.pot-chip{
+  font-size:.5rem; font-weight:900; color:var(--sh-gold); background:rgba(201,168,76,.12);
+  border:1px solid rgba(201,168,76,.5); border-radius:20px; padding:1px 7px; letter-spacing:.04em;
+  animation:chipPop .3s cubic-bezier(.175,.885,.32,1.275);
+}
+.chip-ledger{display:flex; align-items:flex-end; gap:8px; margin-bottom:7px; min-height:34px; overflow-x:auto;}
+.chip-stack{display:flex; flex-direction:row; align-items:flex-end; gap:3px; flex-shrink:0;}
+.chip-column{
+  display:flex; flex-direction:column-reverse; align-items:center; min-height:14px; position:relative;
+}
+.chip-coin{
+  width:24px; height:9px; border-radius:50%; margin-top:-5px; flex-shrink:0;
+  border:1px solid rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25);
+  background:linear-gradient(180deg,#ffe1a8 0%,var(--sh-gold) 55%,#8a6a28 100%);
+}
+.chip-coin.empty{
+  background:transparent; border:1.5px dashed rgba(159,184,195,.35); box-shadow:none;
+}
+.credit-num{font-size:.48rem; font-weight:700; color:var(--sh-steel); white-space:nowrap; flex-shrink:0; padding-bottom:2px;}
+.dice-row{display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+.die{
+  width:clamp(44px,12vw,56px); height:clamp(44px,12vw,56px); border-radius:8px;
+  background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
+  border:1.5px solid var(--sh-edge); display:flex; align-items:center; justify-content:center;
+  cursor:default; position:relative; flex-shrink:0;
+}
+.die svg{width:78%; height:78%;}
+.die-unrolled{width:22%; height:22%; border-radius:50%; background:rgba(159,184,195,.18); border:1px solid rgba(159,184,195,.3);}
+.die.selectable{cursor:pointer;}
+.die.selectable:hover{border-color:var(--sh-tealHi); box-shadow:0 0 14px rgba(22,209,225,.25);}
+.die.marked{border-color:var(--sh-gold); box-shadow:0 0 16px rgba(201,168,76,.45);}
+.die.rolling svg{animation:dieSpin .5s ease-out;}
+@keyframes dieSpin{ 0%{transform:rotate(0) scale(.6); opacity:.3;} 60%{transform:rotate(300deg) scale(1.1);} 100%{transform:rotate(360deg) scale(1); opacity:1;} }
+
+/* --- Hintaro cancellation callout: a targeting reticle locks onto the die about to lose a pip, then it "pops" --- */
+.die.targeted{border-color:var(--sh-alert); z-index:2;}
+.die.targeted::before{
+  content:""; position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+  width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent;
+  border-top:9px solid var(--sh-alert); filter:drop-shadow(0 0 5px rgba(255,77,77,.85));
+  animation:targetBob .5s ease-in-out infinite;
+}
+.die.targeted::after{
+  content:""; position:absolute; inset:-4px; border-radius:10px; border:2px solid var(--sh-alert);
+  box-shadow:0 0 14px rgba(255,77,77,.55); animation:targetPulse .5s ease-in-out infinite; pointer-events:none;
+}
+@keyframes targetBob{ 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(3px);} }
+@keyframes targetPulse{ 0%,100%{opacity:.55; transform:scale(1);} 50%{opacity:1; transform:scale(1.06);} }
+
+.die.nuked{animation:dieNuke .5s ease-out; z-index:2;}
+@keyframes dieNuke{
+  0%{box-shadow:0 0 0 rgba(255,77,77,0); filter:brightness(1);}
+  30%{box-shadow:0 0 30px rgba(255,77,77,.9); filter:brightness(1.9);}
+  100%{box-shadow:0 0 0 rgba(255,77,77,0); filter:brightness(1);}
+}
+.die.nuked::before{
+  content:""; position:absolute; inset:0; border-radius:8px;
+  background:radial-gradient(circle, rgba(255,77,77,.6) 0%, transparent 70%);
+  animation:nukeBurst .5s ease-out forwards; pointer-events:none;
+}
+@keyframes nukeBurst{ 0%{opacity:1; transform:scale(.4);} 100%{opacity:0; transform:scale(1.7);} }
+.die.nuked::after{
+  content:attr(data-nuke-label); position:absolute; top:-15px; left:50%; transform:translateX(-50%);
+  font-family:var(--font); font-size:.4rem; font-weight:900; letter-spacing:.05em; color:var(--sh-alert);
+  white-space:nowrap; text-shadow:0 0 6px rgba(0,0,0,.85); animation:nukeLabel 1s ease-out forwards;
+}
+@keyframes nukeLabel{ 0%{opacity:0; transform:translateX(-50%) translateY(0);} 20%{opacity:1;} 100%{opacity:0; transform:translateX(-50%) translateY(-16px);} }
+
+.die.spent{opacity:.55; filter:grayscale(.35);}
+.die.spent.combo{opacity:1; filter:none;} /* combo dice show a mixed bright/dim split inside the icon itself */
+.die .die-combo-split{width:78%; height:78%; display:flex; flex-direction:column;}
+.die-combo-split svg{display:block; overflow:hidden;}
+.pip-dim{color:rgba(159,184,195,.3);}
+.pip-bright{color:var(--sh-ink);}
+.spent-badge{
+  position:absolute; top:-7px; right:-7px; width:18px; height:18px; border-radius:50%;
+  background:var(--sh-alert); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 6px rgba(0,0,0,.6);
+}
+.spent-badge svg{width:11px; height:11px; color:#1a0a0a;}
+.spent-badge::after{
+  content:""; position:absolute; inset:0; border-radius:50%;
+  background:linear-gradient(to top right, transparent 44%, #1a0a0a 47%, #1a0a0a 53%, transparent 56%);
+}
+.pod-rank{font-size:.46rem; letter-spacing:.08em; color:var(--sh-steel); margin-top:5px;}
+.pod-rank.win{color:var(--sh-gold); font-weight:900;}
+
+.center-area{display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center; padding:8px 0;}
+.pot-display{display:flex; flex-direction:column; align-items:center; gap:2px;}
+.pot-display .lbl{font-size:.46rem; letter-spacing:.22em; color:var(--sh-steel);}
+.pot-display .amt{font-size:1.3rem; font-weight:900; color:var(--sh-gold); text-shadow:0 0 18px rgba(201,168,76,.5);}
+.pot-pile{
+  min-width:60px; min-height:52px; position:relative; margin:2px 0;
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.pot-pile.pot-empty::after{
+  content:"empty"; position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center;
+  font-size:.42rem; letter-spacing:.15em; color:var(--sh-steel); text-transform:uppercase; opacity:.5; height:14px;
+}
+
+#chipFlyLayer{position:fixed; inset:0; pointer-events:none; z-index:80;}
+.flying-chip{
+  position:fixed; width:20px; height:9px; border-radius:50%; pointer-events:none; z-index:80;
+  background:linear-gradient(180deg,#ffe1a8 0%,var(--sh-gold) 55%,#8a6a28 100%);
+  border:1px solid rgba(0,0,0,.35); box-shadow:0 2px 6px rgba(0,0,0,.5), 0 0 10px rgba(201,168,76,.55);
+  animation:chipFly .55s cubic-bezier(.32,.6,.3,1) forwards;
+}
+@keyframes chipFly{
+  0%{ transform:translate(0,0) scale(.85) rotate(0deg); opacity:1; }
+  55%{ transform:translate(var(--mx),var(--my)) scale(1.08) rotate(190deg); opacity:1; }
+  100%{ transform:translate(var(--dx),var(--dy)) scale(.65) rotate(360deg); opacity:.85; }
+}
+.hintaro-die-wrap{display:flex; flex-direction:column; align-items:center; gap:4px;}
+.hintaro-die-wrap .lbl{font-size:.42rem; letter-spacing:.2em; color:var(--sh-steel);}
+.die.hintaro-die{width:clamp(48px,13vw,60px); height:clamp(48px,13vw,60px); border-color:var(--sh-gold); box-shadow:0 0 14px rgba(201,168,76,.18);}
+
+.log-panel{max-height:110px; overflow-y:auto; font-size:.56rem; line-height:1.5; color:var(--sh-steel);}
+.log-panel p{margin:0 0 3px;}
+.log-panel p.hi{color:var(--sh-tealHi);}
+.log-panel p.win{color:var(--sh-gold); font-weight:700;}
+
+.actions{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+.wager-block{width:100%; display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:8px;}
+.wager-label{font-size:.5rem; letter-spacing:.2em; color:var(--sh-gold); text-transform:uppercase; font-weight:700;}
+.wager-stepper{display:flex; align-items:center; gap:12px;}
+.step-btn{
+  width:34px; height:34px; border-radius:8px; font-family:var(--font); font-size:1rem; font-weight:900;
+  border:1.5px solid var(--sh-teal); background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
+  color:var(--sh-tealHi); cursor:pointer; line-height:1;
+  transition:filter .15s, transform .1s;
+}
+.wager-amt{
+  font-size:1.4rem; font-weight:900; color:var(--sh-gold); min-width:64px; text-align:center;
+  text-shadow:0 0 14px rgba(201,168,76,.4);
+}
+.wager-unit{font-size:.5rem; color:var(--sh-steel); letter-spacing:.1em; margin-left:4px;}
+.wager-quick{display:flex; gap:8px;}
+.chip-btn{
+  font-family:var(--font); font-size:.46rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  background:transparent; border:1px solid var(--sh-steel); color:var(--sh-steel); padding:4px 10px; border-radius:14px; cursor:pointer;
+  transition:filter .15s, transform .1s;
+}
+.actions-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:100%;}
+
+/* --- one consistent interaction language for every clickable control: same hue, brighten + lift on
+     hover, settle down on press. Color alone (amber/teal/red) carries the meaning; the motion never changes. --- */
+.btn{
+  font-family:var(--font); font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:.6rem;
+  border:1.5px solid var(--sh-teal); background:var(--sh-teal); color:var(--sh-bg);
+  padding:9px 14px; border-radius:8px; cursor:pointer;
+  box-shadow:0 0 20px rgba(22,209,225,.4);
+  transition:filter .15s, transform .1s; flex:1 1 auto; min-width:90px;
+}
+.btn-danger{border-color:rgba(255,77,77,.55); color:var(--sh-alert); background:rgba(255,77,77,.12); box-shadow:none;}
+.btn-gold{border:none; background:var(--sh-gold); color:var(--sh-bg); box-shadow:0 0 24px rgba(201,168,76,.5);}
+.btn-cta{border:none; background:var(--sh-teal); color:var(--sh-bg); box-shadow:0 0 24px rgba(22,209,225,.5);}
+
+.btn:hover, .step-btn:hover, .chip-btn:hover{ filter:brightness(1.2); transform:scale(1.04); }
+.btn:active, .step-btn:active, .chip-btn:active{ filter:brightness(.9); transform:scale(.96); }
+.btn:disabled{opacity:.3; cursor:not-allowed; filter:grayscale(.5) !important; transform:none !important;}
+
+.icon-row{display:flex; gap:8px; justify-content:center; margin:6px 0;}
+.icon-btn{
+  font-family:var(--font); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:.5rem;
+  border:1.5px solid var(--sh-teal); background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
+  color:var(--sh-tealHi); padding:7px 10px; border-radius:8px; cursor:pointer;
+}
+.icon-btn.active{background:linear-gradient(160deg,#143844 0%,#0a1c24 100%); box-shadow:0 0 18px rgba(22,209,225,.28);}
+
+.legend{display:none;}
+.legend.open{display:block;}
+.legend h3{font-size:.55rem; letter-spacing:.2em; color:var(--sh-tealHi); margin:10px 0 4px; text-transform:uppercase;}
+.legend p, .legend li{font-size:.56rem; line-height:1.6; color:var(--sh-steel); margin:0 0 6px;}
+.legend ul{margin:4px 0; padding-left:16px;}
+.tabs{display:flex; gap:6px; margin-bottom:8px;}
+.tab-btn{
+  flex:1; font-family:var(--font); font-size:.5rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  background:transparent; border:1px solid rgba(159,184,195,.25); color:var(--sh-steel); padding:6px; border-radius:6px; cursor:pointer;
+}
+.tab-btn.active{border-color:var(--sh-teal); color:var(--sh-tealHi); background:rgba(22,209,225,.08);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+.score-table{width:100%; border-collapse:collapse; margin:8px 0;}
+.score-table td{border:1px solid rgba(159,184,195,.2); padding:6px 8px; font-size:.55rem; color:var(--sh-ink);}
+.score-table td.rk{color:var(--sh-gold); font-weight:900; text-align:center; width:26px;}
+.score-table svg{width:20px; height:20px; vertical-align:middle; margin-right:2px;}
+
+.cancel-table{display:flex; flex-direction:column; gap:8px; margin:10px 0;}
+.cancel-row{
+  display:flex; align-items:center; justify-content:center; gap:10px; padding:9px;
+  border:1px solid rgba(159,184,195,.2); border-radius:8px; background:rgba(255,255,255,.02);
+}
+.cancel-row svg{width:26px; height:26px; color:var(--sh-tealHi); flex-shrink:0;}
+.cancel-label{font-size:.55rem; font-weight:900; letter-spacing:.1em; color:var(--sh-ink); min-width:36px; text-align:center;}
+.cancel-x{color:var(--sh-alert); font-weight:900; font-size:.9rem; flex-shrink:0;}
+
+.sg-explain{display:flex; flex-direction:column; align-items:center; gap:4px; max-width:120px; text-align:center;}
+.sg-explain .lbl{font-size:.46rem; letter-spacing:.22em; color:var(--sh-steel);}
+.sg-you{font-size:.5rem; line-height:1.4; color:var(--sh-tealHi); font-weight:700;}
+.sg-you.ranked{color:var(--sh-gold); text-shadow:0 0 10px rgba(201,168,76,.5);}
+
+.sg-rankings{display:flex; flex-direction:column; align-items:center; gap:4px;}
+.sg-rankings .lbl{font-size:.46rem; letter-spacing:.22em; color:var(--sh-steel);}
+.sg-rows{display:flex; flex-direction:column; gap:2px;}
+.sg-row{
+  display:flex; align-items:center; gap:4px; padding:1px 5px; border-radius:5px;
+  transition:opacity .3s, background .3s, box-shadow .3s;
+}
+.sg-row .sg-rk{font-size:.46rem; font-weight:900; color:var(--sh-steel); width:9px; text-align:center; flex-shrink:0;}
+.sg-row .sg-dice{display:flex; gap:1px; flex-shrink:0;}
+.sg-row .sg-dice svg{width:13px; height:13px; color:var(--sh-steel);}
+.sg-row .sg-name{font-size:.4rem; color:var(--sh-steel); letter-spacing:.02em; white-space:nowrap;}
+.sg-row.dim{opacity:.4;}
+.sg-row.match{
+  background:rgba(201,168,76,.14);
+  animation:sgGlow 1.8s ease-in-out infinite;
+}
+.sg-row.match .sg-rk, .sg-row.match .sg-name{color:var(--sh-gold);}
+.sg-row.match .sg-dice svg{color:var(--sh-gold);}
+@keyframes sgGlow{
+  0%,100%{ box-shadow:0 0 10px rgba(201,168,76,.25); }
+  50%{ box-shadow:0 0 18px rgba(201,168,76,.5); }
+}
+
+.segmented{display:flex; border:1px solid rgba(159,184,195,.25); border-radius:8px; overflow:hidden; margin-bottom:8px;}
+.segmented button{
+  flex:1; font-family:var(--font); font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  background:transparent; border:none; border-right:1px solid rgba(159,184,195,.2); color:var(--sh-steel); padding:8px 4px; cursor:pointer;
+}
+.segmented button:last-child{border-right:none;}
+.segmented button.active{background:rgba(22,209,225,.12); color:var(--sh-tealHi);}
+.settings-desc{font-size:.5rem; color:var(--sh-steel); margin:2px 0 10px;}
+
+.toggle-switch{position:relative; width:38px; height:20px; display:inline-block; cursor:pointer;}
+.toggle-switch input{display:none;}
+.toggle-track{position:absolute; inset:0; background:#0c2229; border:1px solid var(--sh-edge); border-radius:20px; transition:.2s;}
+.toggle-knob{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--sh-steel); transition:.2s;}
+.toggle-switch input:checked + .toggle-track{background:rgba(22,209,225,.18); border-color:var(--sh-teal);}
+.toggle-switch input:checked + .toggle-track .toggle-knob{transform:translateX(18px); background:var(--sh-teal); box-shadow:0 0 8px rgba(22,209,225,.6);}
+.settings-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;}
+.settings-row label{font-size:.55rem; letter-spacing:.08em; color:var(--sh-ink);}
+
+.winner-banner{
+  width:100%; max-width:600px; box-sizing:border-box; text-align:center;
+  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.15) 0%, var(--sh-panelB) 70%);
+  border:1.5px solid var(--sh-gold); border-radius:10px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  max-height:0; padding:0 14px; margin-bottom:0; border-width:0; overflow:hidden;
+  opacity:0; pointer-events:none;
+  transition:max-height .28s ease, opacity .22s ease, padding .28s ease, margin .28s ease, border-width .28s ease;
+}
+.winner-banner.show{
+  max-height:110px; padding:14px; margin-bottom:10px; border-width:1.5px;
+  opacity:1; pointer-events:auto;
+}
+.winner-banner .wtitle{font-size:1rem; font-weight:900; letter-spacing:.14em; color:var(--sh-gold); text-shadow:0 0 18px rgba(201,168,76,.5);}
+.winner-banner .wsub{font-size:.55rem; color:var(--sh-steel); margin-top:4px;}
+
+.start-overlay{
+  position:fixed; inset:0; z-index:20; background:rgba(5,9,13,.92); display:flex; align-items:center; justify-content:center; padding:16px;
+  overflow-y:auto;
+}
+.start-card{
+  width:100%; max-width:420px; background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
+  border:1.5px solid var(--sh-teal); border-radius:12px; padding:22px; box-shadow:0 0 40px rgba(22,209,225,.2);
+  margin:auto;
+}
+.start-card h2{
+  font-size:clamp(1.5rem, 7vw, 2.1rem); font-weight:900; letter-spacing:.18em;
+  color:var(--sh-teal); text-shadow:0 0 22px rgba(22,209,225,.28); text-align:center; margin:0 0 4px;
+}
+.start-card .tagline{
+  font-size:.58rem; letter-spacing:.28em; color:var(--sh-steel); text-transform:uppercase; text-align:center; margin:0 0 14px;
+}
+.start-card .howto{
+  font-size:.64rem; line-height:1.55; color:var(--sh-ink); text-align:center; margin:0 0 16px; opacity:.82;
+}
+.start-card .st-sub{font-size:.55rem; color:var(--sh-steel); text-align:center; margin:0 0 16px; letter-spacing:.06em;}
+.start-card .credits{
+  font-size:.44rem; line-height:1.6; color:var(--sh-steel); text-align:center; margin:16px 0 0; opacity:.7;
+}
+.field{margin-bottom:14px;}
+.field .flabel{font-size:.5rem; letter-spacing:.16em; color:var(--sh-steel); text-transform:uppercase; margin-bottom:6px; display:block;}
+
+.stl-promo{
+  width:100%; max-width:600px; text-align:center; font-size:.5rem; color:var(--sh-steel); padding:10px; margin-top:6px; letter-spacing:.05em;
+}
+.stl-promo b{color:var(--sh-gold);}
+
+@keyframes chipPop{0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.15);} 100%{transform:scale(1); opacity:1;}}
+.pulse{animation:chipPop .4s cubic-bezier(.175,.885,.32,1.275);}
+
+/* ============================= MOBILE ============================= */
+@media (max-width:600px){
+  body{padding:10px 8px 30px;}
+
+  /* Touch targets: bump anything a thumb needs to tap below the ~44px comfort line. */
+  .btn, .icon-btn{min-height:46px;}
+  .step-btn{width:46px; height:46px; font-size:1.15rem;}
+  .chip-btn{padding:9px 14px; font-size:.5rem;}
+  .tab-btn{padding:10px 6px;}
+  .segmented button{padding:11px 4px;}
+
+  /* The four center-row blocks (Your Hand / Pot / Hintaro Die / Rankings) wrap unevenly at narrow
+     widths since Rankings is inherently wider than the other three. Force a clean 2x2 grid instead,
+     with the two "core" objects (Pot, Hintaro Die) on top and the two reference panels below. */
+  .center-area{display:grid; grid-template-columns:1fr 1fr; gap:12px 10px; align-items:start; justify-items:center;}
+  .pot-display{order:1;}
+  .hintaro-die-wrap{order:2;}
+  .sg-explain{order:3; max-width:none; width:100%;}
+  .sg-rankings{order:4; width:100%;}
+
+  /* A little breathing room back for the smallest legible text. */
+  .sg-name, .pod-rank, .cancel-label{font-size:.44rem;}
+}
+@media (max-width:380px){
+  .pod{min-width:130px;}
+  .die{width:clamp(40px,13vw,52px); height:clamp(40px,13vw,52px);}
+  .chip-ledger{gap:6px;}
+}
+</style>
+</head>
+<body>
+
+<a class="fullscreen-link" id="fullscreenLink" href="#" target="_blank" rel="noopener noreferrer" title="Open the full version on GitHub">
+  <span class="fs-icon">⛶</span><span class="fs-label">Full Screen</span>
+</a>
+
+<div id="chipFlyLayer"></div>
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+<defs>
+  <symbol id="ic-blank" viewBox="508.13 733.17 44.32 44.32">
+    <path d="M530.28,751.1l4.26,4.23-4.25,4.23-4.26-4.23,4.25-4.24Z" fill="currentColor"/>
+    <polygon points="534.55 755.34 530.28 751.1 526.04 755.34 530.3 759.57 534.55 755.34" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-tukar" viewBox="395.29 674.45 35.59 35.59">
+    <polygon points="426.77 701.13 426.78 694.77 416.07 694.75 416.05 683.37 410.11 683.37 410.09 694.76 399.4 694.76 399.4 701.13 426.77 701.13" fill="currentColor"/>
+    <path d="M408.04,692.84l-.04-8.41-7.24,7.18c-.26.31-.34,1.01-.14,1.23h7.43Z" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-kulro" viewBox="524.92 678.76 35.52 35.52">
+    <path d="M538.59,705.51l4.09-4.71,4.09,4.7h-8.18ZM548.21,694.06l6.21,6.72-4.18,4.47-7.57-8.04-7.59,8.02-4.21-4.44,6.24-6.81-8.08-.13.03-6.31h27.27s.01,6.32.01,6.32c-2.79.02-5.22-.1-8.12.2Z" fill="currentColor"/>
+    <path d="M529.05,687.53l-.03,6.31,8.08.13-6.24,6.81,4.21,4.44,7.59-8.02,7.57,8.04,4.18-4.47-6.21-6.72c2.9-.3,5.33-.18,8.12-.2v-6.32s-27.28,0-27.28,0Z" fill="currentColor"/>
+    <polygon points="538.59 705.51 546.77 705.51 542.68 700.81 538.59 705.51" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-tukarkulro" viewBox="465.45 678.03 35.98 35.98">
+    <path d="M497.11,698.82l-.02-5.79h-10.66s-.02-10.85-.02-10.85h-5.94s0,10.86,0,10.86h-10.71s0,5.84,0,5.84h7.3c.16.05.68.48.55.62l-.45.48-5.53,5.51,4.21,4.14,7.58-7.52,7.58,7.54,4.18-4.15-6.26-6.4c3.13-.37,5.57-.17,8.21-.26Z" fill="currentColor"/>
+    <path d="M478.36,691.23l-.05-8.08-8.28,6.96c-.18.31-.25.81-.15,1.12h8.48Z" fill="currentColor"/>
+    <polygon points="479.4 709.86 487.34 709.81 483.43 705.49 479.4 709.86" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-kulrokulro" viewBox="591.27 674.22 36.52 36.52">
+    <path d="M605.48,706.52l4.07-4.45,3.97,4.44h-8.04ZM613.44,678.48l-3.9,4.39-4.05-4.44,7.95.06ZM597.73,682.88l4.17-4.22,7.63,7.64,7.56-7.67,4.18,4.24-6.24,6.41,8.16.16v6.05s-8.14.15-8.14.15l6.22,6.42-4.16,4.21-7.61-7.65-7.57,7.64-4.19-4.2,6.23-6.41-8.07-.16-.04-6.02,8.1-.17-6.22-6.42Z" fill="currentColor"/>
+    <polygon points="595.89 695.49 603.97 695.65 597.73 702.06 601.93 706.27 609.5 698.63 617.11 706.28 621.27 702.06 615.05 695.64 623.19 695.49 623.19 689.44 615.03 689.28 621.27 682.87 617.09 678.64 609.53 686.3 601.9 678.66 597.73 682.88 603.96 689.31 595.86 689.47 595.89 695.49" fill="currentColor"/>
+    <polygon points="605.48 706.52 613.52 706.51 609.55 702.07 605.48 706.52" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-hin" viewBox="416.81 743.78 47.20 47.20">
+    <path d="M440.89,749.23l-1.01.02-1.22,7.58-3.27,1.01-5.32-5.19c-.16-.15-.7.02-1.04.32l3.6,6.86-2.11,2.67-7.57-1.17c-.19,0-.49.74-.43.87l6.98,3.42v3.44s-6.69,3.26-6.69,3.26c-.15.08-.42.59-.31.67l.48.35,7.6-1.21,2.03,2.69-3.52,6.68.71.73,5.57-5.47,3.29,1.12,1.13,7.12c.04.23.49.61.66.53.17-.08.47-.47.51-.71l1.12-6.96,3.29-1.08,5.59,5.4.79-.46-3.61-6.87,2.03-2.68,7.92,1.19.21-.82c.02-.09-.32-.19-.42-.23l-6.62-3.24v-3.46s7.08-3.46,7.08-3.46c-.12-.41-.22-.82-.39-.8l-.64.07-7.14,1.09-2.01-2.7,3.63-6.88-.82-.49-5.52,5.44-3.35-1.07M447.18,774.55c-3.62,3.21-8.85,3.35-12.72.66-2.65-1.85-4.11-4.72-4.14-7.81-.03-3.08,1.39-6,4.02-7.9,3.78-2.73,9.01-2.6,12.59.37,4.61,3.82,4.81,10.62.24,14.67Z" fill="currentColor"/>
+    <polygon points="436.57 767.38 440.43 771.19 444.28 767.31 440.39 763.41 436.57 767.38" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-taro" viewBox="464.06 736.07 43.40 43.40">
+    <path d="M495.6,744.33c-6.02-4.43-14.09-4.28-19.94.19-5.78,4.43-8.17,12.13-5.52,19.07,2.53,6.61,8.7,10.89,15.65,10.86,6.9-.03,13.1-4.29,15.62-11.03,2.66-7.1,0-14.82-5.82-19.1ZM474.8,768.23c2.18-3.48,5.87-5.7,10.24-5.94l.04,2.92-2.71,2.76,3.46,3.3,3.35-3.36-2.71-2.65-.02-2.98c4.16.25,7.98,2.3,10.25,5.9-5.93,6.28-15.83,6.28-21.91.06ZM485.96,749.44c-3.76-.08-7.43,2.62-8,6.66,2.19-1.83,4.35-2.95,7.17-3.04v7.84c-2.97.2-5.42,1.1-7.97,2.81-3.15-4.34-2.23-10.44,1.72-13.87,3.95-3.42,9.85-3.45,13.82.02,3.91,3.42,4.84,9.44,1.69,13.86-2.51-1.67-4.92-2.65-7.92-2.8l-.03-7.84c2.6.04,4.7,1.08,7.08,2.92-.39-3.59-3.86-6.49-7.55-6.56ZM497.67,766.99l-2.43-2.66c3.33-4.92,2.43-11.26-1.75-15.07-4.34-3.96-10.9-3.98-15.29-.14-4.35,3.8-5.32,10.27-1.89,15.23l-2.51,2.63c-4.85-6.37-3.92-15.19,1.8-20.4,5.69-5.19,14.59-5.2,20.34.02,5.72,5.19,6.65,14.11,1.73,20.4Z" fill="currentColor"/>
+  </symbol>
+</defs>
+</svg>
+
+<div class="wrap">
+  <div class="winner-banner" id="winnerBanner">
+    <div class="wtitle" id="winnerTitle">—</div>
+    <div class="wsub" id="winnerSub">—</div>
+  </div>
+
+  <div class="panel status-bar">
+    <div class="status-item"><span class="lbl">Round</span><span class="val" id="hudRound">1</span></div>
+    <div class="status-item"><span class="lbl">Hintaron</span><span class="val gold" id="hudHintaron">—</span></div>
+    <div class="status-item"><span class="lbl">Pot</span><span class="val gold" id="hudPot">0</span></div>
+    <div class="status-item"><span class="lbl">Phase</span><span class="val" id="hudPhase">—</span></div>
+  </div>
+
+  <div class="table-area">
+    <div class="bot-row" id="botRow"></div>
+    <div class="panel center-area">
+      <div class="sg-explain">
+        <span class="lbl">YOUR HAND</span>
+        <span class="sg-you" id="sgYouLine">Roll to see</span>
+      </div>
+      <div class="pot-display">
+        <span class="lbl">POT</span>
+        <div class="pot-pile" id="potPile"></div>
+        <span class="amt" id="potAmt">0</span>
+      </div>
+      <div class="hintaro-die-wrap">
+        <span class="lbl">HINTARO DIE</span>
+        <div class="die hintaro-die" id="hintaroDie"><svg><use href="#ic-blank"/></svg></div>
+      </div>
+      <div class="sg-rankings" id="scoreGuide">
+        <span class="lbl">RANKINGS</span>
+        <div class="sg-rows">
+          <div class="sg-row" data-rank="1">
+            <span class="sg-rk">1</span>
+            <span class="sg-dice"><svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></span>
+            <span class="sg-name">Tukar-Kulro</span>
+          </div>
+          <div class="sg-row" data-rank="2">
+            <span class="sg-rk">2</span>
+            <span class="sg-dice"><svg><use href="#ic-kulrokulro"/></svg><svg><use href="#ic-kulrokulro"/></svg></span>
+            <span class="sg-name">Quadro-Kulro</span>
+          </div>
+          <div class="sg-row" data-rank="3">
+            <span class="sg-rk">3</span>
+            <span class="sg-dice"><svg><use href="#ic-tukar"/></svg><svg><use href="#ic-tukar"/></svg></span>
+            <span class="sg-name">Tukar-Tukar</span>
+          </div>
+          <div class="sg-row" data-rank="4">
+            <span class="sg-rk">4</span>
+            <span class="sg-dice"><svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></span>
+            <span class="sg-name">Kulro-Kulro</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pod you" id="youPod"></div>
+  </div>
+
+  <div class="panel actions" id="actionPanel"></div>
+
+  <div class="icon-row">
+    <button class="icon-btn" id="btnHelp" onclick="toggleLegend()">☰ RULES</button>
+    <button class="icon-btn" id="btnSound" onclick="toggleSound()">🔊 SOUND</button>
+    <button class="icon-btn" onclick="restartGame()">⟲ NEW GAME</button>
+  </div>
+
+  <div class="panel legend" id="legendPanel">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="rules" onclick="showTab('rules')">RULES</button>
+      <button class="tab-btn" data-tab="scoring" onclick="showTab('scoring')">SCORING</button>
+      <button class="tab-btn" data-tab="symbols" onclick="showTab('symbols')">DICE KEY</button>
+    </div>
+    <div class="tab-content active" id="tab-rules">
+      <h3>The Dice</h3>
+      <p>Each player rolls two <b>Chazwa</b> dice. Faces show <b>Tukar</b>, <b>Kulro</b>, both combined, or blank. One shared <b>Hintaro</b> die shows <b>Hin</b>, <b>Taro</b>, or blank. See the <b>DICE KEY</b> tab for what every face looks like and means.</p>
+      <h3>Round Flow</h3>
+      <ul>
+        <li>Everyone antes into the pot.</li>
+        <li>Roll your two Chazwa dice.</li>
+        <li>A betting round: call, raise, or fold.</li>
+        <li>Each remaining player may reroll exactly one die.</li>
+        <li>The Hintaron throws the Hintaro die: a <b>Hin</b> cancels one Tukar for everyone, a <b>Taro</b> cancels one Kulro.</li>
+        <li>Best ranked hand wins the pot. The Hintaron role passes left each round.</li>
+      </ul>
+    </div>
+    <div class="tab-content" id="tab-scoring">
+      <h3>Hintaro Score Ranking</h3>
+      <table class="score-table">
+        <tr><td class="rk">1</td><td>Tukar to Kulro <svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></td></tr>
+        <tr><td class="rk">2</td><td>Quadro-Kulro <svg><use href="#ic-kulrokulro"/></svg><svg><use href="#ic-kulrokulro"/></svg></td></tr>
+        <tr><td class="rk">3</td><td>Tukar-Tukar <svg><use href="#ic-tukar"/></svg><svg><use href="#ic-tukar"/></svg></td></tr>
+        <tr><td class="rk">4</td><td>Kulro-Kulro <svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></td></tr>
+      </table>
+      <p>Any other combination cannot win. Ties split the pot; if nobody ranks, the pot carries to next round.</p>
+    </div>
+    <div class="tab-content" id="tab-symbols">
+      <h3>Your Chazwa Dice (2 rolled per player)</h3>
+      <table class="score-table">
+        <tr><td class="rk"><svg><use href="#ic-blank"/></svg></td><td>Blank — worth nothing (2 of the 6 faces)</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-tukar"/></svg></td><td>Tukar — worth 1 Tukar</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-kulro"/></svg></td><td>Kulro — worth 1 Kulro</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-tukarkulro"/></svg></td><td>Tukar + Kulro — one die worth <b>both</b>: 1 Tukar and 1 Kulro</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-kulrokulro"/></svg></td><td>Kulro-Kulro — one die worth 2 Kulro</td></tr>
+      </table>
+      <h3>The Shared Hintaro Die (thrown once, affects everyone)</h3>
+      <table class="score-table">
+        <tr><td class="rk"><svg><use href="#ic-blank"/></svg></td><td>Blank — no effect (2 of the 6 faces)</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-hin"/></svg></td><td>Hin — cancels 1 Tukar, table-wide</td></tr>
+        <tr><td class="rk"><svg><use href="#ic-taro"/></svg></td><td>Taro — cancels 1 Kulro, table-wide</td></tr>
+      </table>
+      <h3>Cancelling</h3>
+      <div class="cancel-table">
+        <div class="cancel-row">
+          <span class="cancel-label">HIN</span><svg><use href="#ic-hin"/></svg>
+          <span class="cancel-x">✕</span>
+          <svg><use href="#ic-tukar"/></svg><span class="cancel-label">TUKAR</span>
+        </div>
+        <div class="cancel-row">
+          <span class="cancel-label">TARO</span><svg><use href="#ic-taro"/></svg>
+          <span class="cancel-x">✕</span>
+          <svg><use href="#ic-kulro"/></svg><span class="cancel-label">KULRO</span>
+        </div>
+      </div>
+      <p>Only <b>one</b> pip is cancelled, not a whole die. If a die shows Tukar + Kulro and a Hin cancels its Tukar, the Kulro on that same die still counts. During the Hintaro throw, watch for a red targeting flash on the exact die that loses a pip — a small red badge stays on it afterward showing which symbol was cancelled.</p>
+    </div>
+  </div>
+
+  <div class="panel" style="display:none" id="logPanelWrap">
+    <h3 style="font-size:.5rem;letter-spacing:.2em;color:var(--sh-steel);margin:0 0 6px;">TABLE TALK</h3>
+    <div class="log-panel" id="logPanel"></div>
+  </div>
+
+  <p class="stl-promo">Part of the <b>Smuggler's Hold</b> cantina game series · fan project, not affiliated with Lucasfilm or Disney</p>
+</div>
+
+<div class="start-overlay" id="startOverlay">
+  <div class="start-card">
+    <h2>HINTARO</h2>
+    <p class="tagline">A Game of Chance Cubes · Cantina Edition</p>
+    <p class="howto">Roll your Chazwa dice, then the shared Hintaro die cancels one Tukar and one Kulro table-wide. Match one of four ranked combos when the dust settles to win the pot.</p>
+    <p class="st-sub">Set the table before you roll</p>
+    <div class="field">
+      <span class="flabel">Opponents</span>
+      <div class="segmented" id="botCountSeg">
+        <button data-v="1">1 DROID</button>
+        <button data-v="2" class="active">2 DROIDS</button>
+        <button data-v="3">3 DROIDS</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="flabel">Starting Credits</span>
+      <div class="segmented" id="creditSeg">
+        <button data-v="5">5</button>
+        <button data-v="10" class="active">10</button>
+        <button data-v="25">25</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="flabel">Ante</span>
+      <div class="segmented" id="anteSeg">
+        <button data-v="1">1</button>
+        <button data-v="2" class="active">2</button>
+        <button data-v="5">5</button>
+      </div>
+    </div>
+    <button class="btn btn-cta" style="width:100%" onclick="beginGame()">DEAL ME IN</button>
+    <p class="credits">Based on the Hintaro dice game from Star Wars: Edge of the Empire · fan project, not affiliated with Lucasfilm or Disney</p>
+  </div>
+</div>
+
+<script>
+/* Update this to your published GitHub Pages URL once the repo is live — the
+   corner "Full Screen" link opens this in a new tab so players embedded in a
+   Squarespace iframe can pop out to the full, unconstrained page. */
+const FULLSCREEN_URL = 'https://YOUR-GITHUB-USERNAME.github.io/YOUR-REPO-NAME/hintaro.html';
+document.getElementById('fullscreenLink').href = FULLSCREEN_URL;
+
+/* ============================= AUDIO ============================= */
+const HAudio=(function(){
+  let ctx=null, muted=false;
+  function ac(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return ctx; }
+  function blip(freq,dur,type,gain){
+    if(muted) return; const c=ac(); if(!c) return;
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=gain||0.05;
+    o.connect(g); g.connect(c.destination);
+    const t=c.currentTime;
+    g.gain.setValueAtTime(g.gain.value,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur);
+  }
+  return{
+    toggleMute(){ muted=!muted; return muted; },
+    click(){ blip(320,.06,'square',.04); },
+    roll(){ for(let i=0;i<4;i++) setTimeout(()=>blip(140+Math.random()*180,.05,'square',.03), i*45); },
+    chip(){ blip(680,.08,'triangle',.05); },
+    win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,.28,'sine',.06), i*90)); },
+    fold(){ blip(120,.18,'sawtooth',.03); },
+    cancel(){ blip(220,.12,'sine',.05); setTimeout(()=>blip(180,.14,'sine',.04),80); }
+  };
+})();
+
+/* ============================= GAME DATA ============================= */
+// Chazwa die faces (6, equal probability): {t:tukar count, k:kulro count, icon:symbol id}
+const CHAZWA_FACES=[
+  {t:0,k:0,icon:'ic-blank'},
+  {t:0,k:0,icon:'ic-blank'},
+  {t:0,k:1,icon:'ic-kulro'},
+  {t:1,k:0,icon:'ic-tukar'},
+  {t:1,k:1,icon:'ic-tukarkulro'},
+  {t:0,k:2,icon:'ic-kulrokulro'}
+];
+// Hintaro die faces (6): blank, blank, hin, taro, hin, taro
+const HINTARO_FACES=[
+  {r:'blank',icon:'ic-blank'},
+  {r:'blank',icon:'ic-blank'},
+  {r:'hin',icon:'ic-hin'},
+  {r:'taro',icon:'ic-taro'},
+  {r:'hin',icon:'ic-hin'},
+  {r:'taro',icon:'ic-taro'}
+];
+
+function rollChazwa(){ return CHAZWA_FACES[Math.floor(Math.random()*6)]; }
+function rollHintaroDie(){ return HINTARO_FACES[Math.floor(Math.random()*6)]; }
+
+// Rank a hand given raw tukar/kulro totals (after cancellation). Lower rank number = better. 0 = no rank (can't win).
+function rankHand(t,k){
+  if(t===2 && k===2) return {rank:1,name:'Tukar to Kulro'};
+  if(k===4) return {rank:2,name:'Quadro-Kulro'};
+  if(t===2 && k===0) return {rank:3,name:'Tukar-Tukar'};
+  if(k===2 && t===0) return {rank:4,name:'Kulro-Kulro'};
+  return {rank:0,name:'No Rank'};
+}
+function handScore(t,k){ const r=rankHand(t,k).rank; return r===0?0:(5-r); } // higher = better, 0 = worthless
+
+// Hands must match a rank EXACTLY — a stray extra symbol of the other kind disqualifies an otherwise-
+// close hand (e.g. 2 Kulro + 1 Tukar does NOT rank, even though the Kulro count matches Kulro-Kulro).
+// This spells out the specific near-misses players are most likely to find confusing.
+function explainNoRank(t,k){
+  if(rankHand(t,k).rank>0) return '';
+  if(k===2 && t>0) return 'the extra Tukar breaks Kulro-Kulro';
+  if(t===2 && k>0) return 'the extra Kulro breaks Tukar-Tukar';
+  if(k===4 && t>0) return 'the extra Tukar breaks Quadro-Kulro';
+  return '';
+}
+
+// Live read of the human's current hand, for the on-screen hand-rankings guide.
+// Uses the authoritative post-cancellation totals once the round has resolved; raw totals beforehand.
+function computeLiveHand(){
+  const p=G.players[0];
+  if(!p || !p.dice[0] || !p.dice[1]) return null; // hasn't thrown yet
+  let t=0,k=0; p.dice.forEach(d=>{t+=d.t;k+=d.k;});
+  let cancelNote='';
+  if(G.phase==='resolve' && p.finalT!==undefined){
+    const rawT=t, rawK=k;
+    t=p.finalT; k=p.finalK;
+    if(G.hintaroFace && G.hintaroFace.r==='hin' && rawT>t) cancelNote='Hin cancelled a Tukar';
+    else if(G.hintaroFace && G.hintaroFace.r==='taro' && rawK>k) cancelNote='Taro cancelled a Kulro';
+  }
+  const rk=rankHand(t,k);
+  return {t,k,rank:rk.rank,name:rk.name,cancelNote};
+}
+
+/* ============================= GAME STATE ============================= */
+let G=null; // main game object, built in beginGame()
+let wagerAmt=0; // human's discretionary bet/raise amount, set via the stepper
+
+function seatsFrom(start,total,dir){
+  const out=[]; let s=start;
+  for(let i=0;i<total;i++){ out.push(s); s=(s+dir+total)%total; }
+  return out;
+}
+function leftOf(seat,total){ return (seat+1)%total; }
+function rightOf(seat,total){ return (seat-1+total)%total; }
+
+function newPlayer(id,name,isHuman,chips){
+  return {
+    id,name,isHuman,chips,
+    dice:[null,null], // not thrown yet
+    folded:false, bet:0, anted:false, rerolled:false, thrown:false,
+    active:true // in current round
+  };
+}
+
+function beginGame(){
+  const botCount=parseInt(document.querySelector('#botCountSeg .active').dataset.v,10);
+  const startChips=parseInt(document.querySelector('#creditSeg .active').dataset.v,10);
+  const ante=parseInt(document.querySelector('#anteSeg .active').dataset.v,10);
+  const total=botCount+1;
+  const botNames=['ID-10T','4Q-2','L3-37'];
+  const players=[ newPlayer(0,'You',true,startChips) ];
+  for(let i=0;i<botCount;i++) players.push(newPlayer(i+1,botNames[i],false,startChips));
+  G={
+    players, total, hintaronSeat:0, round:1, pot:0, ante, startChips,
+    phase:'ante', // ante -> throw -> bet1 -> bet2 -> reroll -> hintarothrow -> resolve
+    currentBet:0, betOrder:[], betIdx:0, betRaised:false, minBet:ante,
+    rerollOrder:[], rerollIdx:0,
+    hintaroFace:null, potCarriesOver:false,
+    log:[]
+  };
+  document.getElementById('startOverlay').style.display='none';
+  logMsg('New table: you vs '+botCount+' droid'+(botCount>1?'s':'')+'. Starting credits '+startChips+', ante '+ante+'.');
+  startRound(true);
+}
+
+function restartGame(){
+  document.getElementById('startOverlay').style.display='flex';
+  document.getElementById('winnerBanner').classList.remove('show');
+}
+
+function logMsg(msg,cls){
+  G.log.unshift('<p'+(cls?(' class="'+cls+'"'):'')+'>'+msg+'</p>');
+  if(G.log.length>40) G.log.length=40;
+  const el=document.getElementById('logPanel');
+  document.getElementById('logPanelWrap').style.display='block';
+  el.innerHTML=G.log.join('');
+}
+
+/* ============================= ROUND FLOW ============================= */
+function startRound(firstRound){
+  const P=G.players;
+  P.forEach(p=>{
+    if(p.chips<=0) return; // eliminated, sits out
+    p.dice=[null,null];
+    p.folded=false; p.bet=0; p.anted=false; p.rerolled=false; p.thrown=false; p.active=true;
+  });
+  P.forEach(p=>{ if(p.chips<=0) p.active=false; });
+  if(!G.potCarriesOver) G.pot=0; // authoritative: a paid-out pot is always cleared before the next round,
+  G.potCarriesOver=false;        // regardless of whether the cosmetic scoop animation finished in time
+  G.currentBet=0; G.betRaised=false; G.hintaroFace=null; G.phase='ante'; G.cancelTargets={}; G.winningRank=0;
+  G.chazwaThrowing=false; G.hintaroThrowing=false; // reset re-entrancy guards for the new round
+  document.getElementById('winnerBanner').classList.remove('show');
+  if(!firstRound) logMsg('— Round '+G.round+' begins. '+P[G.hintaronSeat].name+' is Hintaron. —','hi');
+  else logMsg(P[G.hintaronSeat].name+' is the first Hintaron.','hi');
+  doAntePhase();
+}
+
+function activePlayers(){ return G.players.filter(p=>p.active && !p.folded); }
+function livingPlayers(){ return G.players.filter(p=>p.chips>0 || p===G.players[0]); }
+
+/* ---- ante: a deliberate, one-player-at-a-time turn so the human learns to pay before rolling ---- */
+function doAntePhase(){
+  G.phase='ante';
+  G.anteOrder=seatsFrom(leftOf(G.hintaronSeat,G.total),G.total,1).filter(s=>G.players[s].active);
+  G.anteIdx=0;
+  advanceAnte();
+}
+function advanceAnte(){
+  if(G.anteIdx>=G.anteOrder.length){
+    logMsg('All antes are in. Pot: '+G.pot+'.');
+    render();
+    setTimeout(doThrowPhase, 300);
+    return;
+  }
+  render();
+  const seat=G.anteOrder[G.anteIdx];
+  if(!G.players[seat].isHuman) setTimeout(()=>droidAnte(seat), 600);
+}
+function payAnte(seat){
+  const p=G.players[seat];
+  const amt=Math.min(G.ante,p.chips);
+  p.chips-=amt; G.pot+=amt; p.anted=true;
+  return amt;
+}
+function droidAnte(seat){
+  if(G.phase!=='ante' || G.anteOrder[G.anteIdx]!==seat) return;
+  const p=G.players[seat];
+  const amt=payAnte(seat);
+  logMsg(p.name+' antes '+amt+'.');
+  render();
+  if(amt>0) tossPlayerToPot(seat,amt);
+  G.anteIdx++;
+  setTimeout(advanceAnte, 350);
+}
+function humanAnte(){
+  if(G.phase!=='ante' || G.anteOrder[G.anteIdx]!==0) return;
+  const amt=payAnte(0);
+  logMsg('You ante '+amt+'.','hi');
+  render();
+  if(amt>0) tossPlayerToPot(0,amt);
+  G.anteIdx++;
+  setTimeout(advanceAnte, 200);
+}
+
+/* ---- throw the chazwa: you roll first, then each droid takes its turn in sequence ---- */
+function doThrowPhase(){
+  G.phase='throw';
+  render();
+}
+function throwChazwaForAll(){
+  if(G.phase!=='throw' || G.chazwaThrowing) return; // blocks a fast double-click during the roll animation
+  G.chazwaThrowing=true;
+  const human=G.players[0];
+  if(human.active){ human.dice=[rollChazwa(),rollChazwa()]; human.thrown=true; }
+  HAudio.roll();
+  render();
+  document.querySelectorAll('.pod[data-seat="0"] .dice-row .die').forEach(el=>el.classList.add('rolling'));
+  logMsg('You throw the Chazwa.','hi');
+  const droidSeats=activePlayers().filter(p=>!p.isHuman).map(p=>p.id);
+  let idx=0;
+  function nextDroid(){
+    if(idx>=droidSeats.length){ setTimeout(()=>doBetPhase(1), 400); return; }
+    const seat=droidSeats[idx]; idx++;
+    const p=G.players[seat];
+    p.dice=[rollChazwa(),rollChazwa()]; p.thrown=true;
+    HAudio.roll();
+    render();
+    document.querySelectorAll('.pod[data-seat="'+seat+'"] .dice-row .die').forEach(el=>el.classList.add('rolling'));
+    logMsg(p.name+' throws the Chazwa.');
+    setTimeout(nextDroid, 550);
+  }
+  setTimeout(nextDroid, 500);
+}
+
+function doBetPhase(passNum){
+  G.phase='bet'+passNum;
+  if(passNum===1){
+    G.currentBet=0; G.betRaised=false;
+    G.betOrder=seatsFrom(rightOf(G.hintaronSeat,G.total),G.total,-1).filter(s=>G.players[s].active && !G.players[s].folded);
+  } else {
+    // pass 2: only if hintaron raised; everyone except hintaron must call or fold, in same relative order
+    G.betOrder=seatsFrom(rightOf(G.hintaronSeat,G.total),G.total,-1).filter(s=>s!==G.hintaronSeat && G.players[s].active && !G.players[s].folded);
+  }
+  G.betIdx=0;
+  advanceBet();
+}
+
+function advanceBet(){
+  const order=G.betOrder;
+  if(G.betIdx>=order.length){
+    if(G.phase==='bet1' && G.betRaised){ setTimeout(()=>doBetPhase(2),250); return; }
+    return doRerollPhase();
+  }
+  const seat=order[G.betIdx];
+  const p=G.players[seat];
+  if(p.folded || !p.active){ G.betIdx++; return advanceBet(); }
+  if(p.isHuman && G.phase==='bet1'){
+    const callAmt=playerCallAmt(p);
+    const floor=callAmt===0? G.minBet : G.currentBet+G.minBet;
+    const cap=p.bet+p.chips;
+    wagerAmt=Math.min(floor,cap);
+  }
+  render();
+  if(p.isHuman){ renderBetActions(seat); }
+  else { setTimeout(()=>botBetDecision(seat), 550); }
+}
+
+function playerCallAmt(p){ return Math.max(0, G.currentBet - p.bet); }
+
+// Moves a player's total wager-this-round to targetTotal (clamped to what they can afford).
+// Returns the amount actually added to the pot by this action.
+function applyWager(p, targetTotal){
+  const target=Math.max(p.bet, Math.min(targetTotal, p.bet+p.chips));
+  const add=target-p.bet;
+  p.chips-=add; p.bet=target; G.pot+=add;
+  if(p.bet>G.currentBet){ G.currentBet=p.bet; G.betRaised=true; }
+  return add;
+}
+
+function humanBet(action, amount){
+  const seat=0; const p=G.players[seat];
+  const wasOpen=G.currentBet===0;
+  let addAmt=0;
+  if(action==='fold'){ p.folded=true; logMsg('You fold.','hi'); }
+  else if(action==='check'){ logMsg('You check.'); }
+  else if(action==='call'){ addAmt=applyWager(p,G.currentBet); logMsg('You see the bet ('+addAmt+').','hi'); HAudio.chip(); }
+  else if(action==='wager'){ addAmt=applyWager(p,amount); logMsg('You '+(wasOpen?'bet':'raise to')+' '+p.bet+'.','hi'); HAudio.chip(); }
+  G.betIdx++;
+  render();
+  if(addAmt>0) tossPlayerToPot(seat, addAmt);
+  setTimeout(advanceBet, 200);
+}
+
+function adjustWagerAmt(delta){
+  const p=G.players[0];
+  const callAmt=playerCallAmt(p);
+  const floor=callAmt===0? G.minBet : G.currentBet+G.minBet;
+  const cap=Math.max(floor,p.bet+p.chips);
+  wagerAmt=Math.max(floor,Math.min(cap,wagerAmt+delta));
+  renderBetActions(0);
+}
+function setWagerAmt(v){
+  const p=G.players[0];
+  const callAmt=playerCallAmt(p);
+  const floor=callAmt===0? G.minBet : G.currentBet+G.minBet;
+  const cap=Math.max(floor,p.bet+p.chips);
+  wagerAmt=Math.max(floor,Math.min(cap,v));
+  renderBetActions(0);
+}
+
+function estimateHandScore(p){
+  let t=0,k=0; p.dice.forEach(d=>{t+=d.t;k+=d.k;});
+  return handScore(t,k);
+}
+function bestPotential(p){
+  // brute-force: try rerolling each die across all 6 faces, return best average score achievable
+  let t=0,k=0; p.dice.forEach(d=>{t+=d.t;k+=d.k;});
+  const cur=handScore(t,k);
+  let best=cur;
+  for(let i=0;i<2;i++){
+    let sum=0;
+    for(const f of CHAZWA_FACES){
+      const ot=p.dice[1-i].t, ok=p.dice[1-i].k;
+      sum+=handScore(ot+f.t, ok+f.k);
+    }
+    const avg=sum/6;
+    if(avg>best) best=avg;
+  }
+  return best;
+}
+
+function botBetDecision(seat){
+  const p=G.players[seat];
+  const myScore=estimateHandScore(p);
+  const potential=bestPotential(p);
+  const rivalScores=activePlayers().filter(x=>x.id!==p.id).map(estimateHandScore);
+  const maxRival=rivalScores.length?Math.max(...rivalScores):0;
+  const confidence=potential - maxRival + (Math.random()*1.4-0.4); // small bluff/noise factor
+  const callAmt=playerCallAmt(p);
+
+  let addAmt=0;
+  if(G.phase==='bet2'){
+    // must call or fold, no raising
+    if(confidence>=-1.6 && p.chips>0){ addAmt=applyWager(p,G.currentBet); logMsg(p.name+' sees the bet ('+addAmt+').'); HAudio.chip(); }
+    else { p.folded=true; logMsg(p.name+' folds.'); HAudio.fold(); }
+    G.betIdx++; render(); if(addAmt>0) tossPlayerToPot(seat,addAmt); setTimeout(advanceBet,300); return;
+  }
+
+  if(callAmt===0){
+    // can check or open a bet, sized to how confident they are
+    if(confidence>1.2 && p.chips>=G.minBet){
+      const size=Math.round(G.minBet*(1+Math.max(0,confidence-1)));
+      addAmt=applyWager(p, p.bet+Math.max(G.minBet,size));
+      logMsg(p.name+' bets '+p.bet+'.'); HAudio.chip();
+    } else {
+      logMsg(p.name+' checks.');
+    }
+  } else {
+    if(confidence< -1.4 || p.chips<=0){ p.folded=true; logMsg(p.name+' folds.'); HAudio.fold(); }
+    else if(confidence>2 && p.chips>callAmt && seat!==G.hintaronSeat && G.phase==='bet1'){
+      const size=Math.round(G.minBet*(1+Math.max(0,confidence-2)));
+      addAmt=applyWager(p, G.currentBet+Math.max(G.minBet,size));
+      logMsg(p.name+' raises to '+p.bet+'.'); HAudio.chip();
+    } else {
+      addAmt=applyWager(p, G.currentBet);
+      logMsg(p.name+' sees the bet ('+addAmt+').'); HAudio.chip();
+    }
+  }
+  G.betIdx++; render(); if(addAmt>0) tossPlayerToPot(seat,addAmt); setTimeout(advanceBet,300);
+}
+
+/* ---- reroll phase ---- */
+function doRerollPhase(){
+  G.phase='reroll';
+  G.rerollOrder=seatsFrom(leftOf(G.hintaronSeat,G.total),G.total,1).filter(s=>G.players[s].active && !G.players[s].folded);
+  G.rerollIdx=0;
+  advanceReroll();
+}
+function advanceReroll(){
+  if(G.rerollIdx>=G.rerollOrder.length) return doHintaroThrowPhase();
+  const seat=G.rerollOrder[G.rerollIdx];
+  const p=G.players[seat];
+  render();
+  if(p.isHuman){ renderRerollActions(seat); }
+  else { setTimeout(()=>botRerollDecision(seat), 600); }
+}
+function botRerollDecision(seat){
+  const p=G.players[seat];
+  let t=0,k=0; p.dice.forEach(d=>{t+=d.t;k+=d.k;});
+  const cur=handScore(t,k);
+  let bestIdx=-1, bestAvg=cur;
+  for(let i=0;i<2;i++){
+    let sum=0;
+    for(const f of CHAZWA_FACES){ sum+=handScore(p.dice[1-i].t+f.t, p.dice[1-i].k+f.k); }
+    const avg=sum/6;
+    if(avg>bestAvg+0.15){ bestAvg=avg; bestIdx=i; }
+  }
+  if(bestIdx>=0){
+    p.dice[bestIdx]=rollChazwa();
+    logMsg(p.name+' rerolls a die.'); HAudio.roll();
+  } else {
+    logMsg(p.name+' keeps both dice.');
+  }
+  p.rerolled=true;
+  G.rerollIdx++; render(); setTimeout(advanceReroll,350);
+}
+function humanReroll(dieIdx){
+  const p=G.players[0];
+  if(dieIdx>=0){ p.dice[dieIdx]=rollChazwa(); logMsg('You reroll a die.','hi'); HAudio.roll(); }
+  else { logMsg('You keep both dice.','hi'); }
+  p.rerolled=true;
+  G.rerollIdx++;
+  render();
+  setTimeout(advanceReroll,300);
+}
+
+/* ---- hintaro throw & resolve ---- */
+function doHintaroThrowPhase(){
+  G.phase='hintarothrow';
+  render();
+}
+// Which single die (per active player) visually takes the Hintaro's cancellation — used to
+// drive the targeting/pop callout. Mechanically only ONE Tukar or ONE Kulro is ever cancelled,
+// so we point at the first die that carries the relevant symbol.
+function computeCancelTargets(){
+  const targets={};
+  if(!G.hintaroFace || G.hintaroFace.r==='blank') return targets;
+  const wantT=G.hintaroFace.r==='hin', wantK=G.hintaroFace.r==='taro';
+  activePlayers().forEach(p=>{
+    if(!p.dice[0] || !p.dice[1]) return;
+    if(wantT){
+      const idx=p.dice.findIndex(d=>d.t>0);
+      if(idx>=0) targets[p.id]={dieIdx:idx,label:'-1 TUKAR',type:'tukar'};
+    } else if(wantK){
+      const idx=p.dice.findIndex(d=>d.k>0);
+      if(idx>=0) targets[p.id]={dieIdx:idx,label:'-1 KULRO',type:'kulro'};
+    }
+  });
+  return targets;
+}
+function dieElFor(seat,idx){
+  return document.querySelector('.pod[data-seat="'+seat+'"] .dice-row .die:nth-child('+(idx+1)+')');
+}
+function throwHintaro(){
+  if(G.phase!=='hintarothrow' || G.hintaroThrowing) return; // blocks a fast double-click during the roll animation
+  G.hintaroThrowing=true;
+  renderActionPanel(); // immediately swap the button out for a "throwing…" message
+  const die=document.getElementById('hintaroDie');
+  die.classList.add('rolling');
+  HAudio.roll();
+  setTimeout(()=>{
+    // Phase 0: the Hintaro die reveals its rolled face — this must be visible before anything
+    // downstream reacts to it, or the targeting FX reads as happening for no visible reason.
+    G.hintaroFace=rollHintaroDie();
+    die.classList.remove('rolling');
+    die.innerHTML=dieIconMarkup(G.hintaroFace);
+    if(G.hintaroFace.r!=='blank') HAudio.cancel();
+    logMsg('The Hintaro shows <b>'+(G.hintaroFace.r==='blank'?'Blank':G.hintaroFace.r.toUpperCase())+'</b>.','win');
+    G.cancelTargets=computeCancelTargets();
+    const seats=Object.keys(G.cancelTargets);
+    if(seats.length===0){ setTimeout(resolveRound, 500); return; }
+    setTimeout(()=>{
+      // Phase 1: red targeting reticle locks onto each affected die ("target acquired")
+      seats.forEach(s=>{
+        const el=dieElFor(s, G.cancelTargets[s].dieIdx);
+        if(el) el.classList.add('targeted');
+      });
+      setTimeout(()=>{
+        // Phase 2: pop — the die flashes and a "-1 TUKAR/KULRO" label rises off it
+        seats.forEach(s=>{
+          const t=G.cancelTargets[s];
+          const el=dieElFor(s, t.dieIdx);
+          if(el){ el.classList.remove('targeted'); el.setAttribute('data-nuke-label', t.label); el.classList.add('nuked'); }
+        });
+        HAudio.cancel();
+        setTimeout(resolveRound, 550);
+      }, 500);
+    }, 500); // pause so the revealed Hintaro face is clearly seen before targeting begins
+  },500);
+}
+function resolveRound(){
+  G.phase='resolve';
+  const cancelT = G.hintaroFace.r==='hin' ? 1:0;
+  const cancelK = G.hintaroFace.r==='taro' ? 1:0;
+  const results=[];
+  activePlayers().forEach(p=>{
+    let t=0,k=0; p.dice.forEach(d=>{t+=d.t;k+=d.k;});
+    t=Math.max(0,t-cancelT); k=Math.max(0,k-cancelK);
+    const rk=rankHand(t,k);
+    results.push({p,t,k,rank:rk.rank,name:rk.name});
+    p.finalRank=rk.rank; p.finalName=rk.name; p.finalT=t; p.finalK=k;
+  });
+  const contenders=results.filter(r=>r.rank>0);
+  let winnerMsg, subMsg;
+  if(contenders.length===0){
+    winnerMsg='NO WINNER'; subMsg='Nobody ranked. The pot of '+G.pot+' carries to next round.';
+    logMsg('No one ranks this round. Pot carries over.','win');
+    G.potCarriesOver=true;
+    G.winningRank=0;
+  } else {
+    const best=Math.min(...contenders.map(r=>r.rank));
+    G.winningRank=best;
+    const winners=contenders.filter(r=>r.rank===best);
+    const potBeforePayout=G.pot;
+    const share=Math.floor(potBeforePayout/winners.length);
+    winners.forEach(w=>{ w.p.chips+=share; });
+    const leftover=potBeforePayout - share*winners.length;
+    if(leftover>0 && winners[0]) winners[0].p.chips+=leftover;
+    if(winners.length===1){
+      const verb=winners[0].p.isHuman?'WIN':'WINS';
+      winnerMsg=winners[0].p.name.toUpperCase()+' '+verb;
+      subMsg=winners[0].name+' ('+winners[0].t+' Tukar / '+winners[0].k+' Kulro) takes '+potBeforePayout+' credits.';
+    } else {
+      winnerMsg='SPLIT POT';
+      subMsg=winners.map(w=>w.p.name).join(' & ')+' tie with '+winners[0].name+' — '+share+' each.';
+    }
+    logMsg(winnerMsg+'. '+subMsg,'win');
+    HAudio.win();
+    // keep the pot pile visually full while coins scoop out to the winner(s), then clear it
+    const roundSnapshot=G.round;
+    document.getElementById('winnerTitle').textContent=winnerMsg;
+    document.getElementById('winnerSub').textContent=subMsg;
+    document.getElementById('winnerBanner').classList.add('show');
+    render();
+    winners.forEach((w,idx)=>{
+      const amt=(idx===0)? share+leftover : share;
+      tossPotToPlayer(w.p.id, amt, idx*160);
+    });
+    setTimeout(()=>{
+      if(G.round===roundSnapshot && G.phase==='resolve'){ G.pot=0; render(); }
+    }, 550+winners.length*160);
+    return;
+  }
+  document.getElementById('winnerTitle').textContent=winnerMsg;
+  document.getElementById('winnerSub').textContent=subMsg;
+  document.getElementById('winnerBanner').classList.add('show');
+  render();
+}
+function nextRound(){
+  if(G.phase!=='resolve') return; // guards against a fast double-click re-entering round setup
+  G.round++;
+  // advance hintaron to next seat with chips (or human always eligible)
+  let ns=leftOf(G.hintaronSeat,G.total);
+  for(let i=0;i<G.total;i++){ if(G.players[ns].chips>0 || ns===0){ break;} ns=leftOf(ns,G.total); }
+  G.hintaronSeat=ns;
+  const human=G.players[0];
+  if(human.chips<=0){
+    document.getElementById('winnerTitle').textContent='OUT OF CREDITS';
+    document.getElementById('winnerSub').textContent='Start a new game to keep playing.';
+    document.getElementById('winnerBanner').classList.add('show');
+    return;
+  }
+  startRound(false);
+}
+
+/* ============================= RENDER ============================= */
+// Combo faces (Tukar+Kulro, Kulro-Kulro) are one glyph split top/bottom between the two symbols it
+// represents (confirmed by inspecting each icon's path geometry). When the Hintaro cancels one of
+// those symbols, we render the face as two stacked SVG "windows" — each showing only its half of the
+// same underlying icon, at the same scale — so only the cancelled half greys out and the other stays lit.
+// seamY sits at the top edge of the Kulro crossbar in each glyph (not the icon's visual midpoint),
+// so the entire crossbar renders as part of the Kulro (bottom) half, not the element(s) above it.
+const COMBO_SPLIT={
+  'ic-tukarkulro':{vbX:465.45,vbY:678.03,vbW:35.98,vbH:35.98, seamY:693.04, topType:'tukar', bottomType:'kulro'},
+  'ic-kulrokulro':{vbX:591.27,vbY:674.22,vbW:36.52,vbH:36.52, seamY:689.35, topType:'kulro', bottomType:'kulro'}
+};
+function dieIconMarkup(face, cancelledType){
+  if(!face) return '<span class="die-unrolled"></span>';
+  const c=COMBO_SPLIT[face.icon];
+  if(cancelledType && c){
+    const topH=c.seamY-c.vbY, botH=(c.vbY+c.vbH)-c.seamY;
+    const topPct=(topH/c.vbH*100).toFixed(2), botPct=(botH/c.vbH*100).toFixed(2);
+    const dimTop = c.topType===cancelledType;
+    const useTag='<use href="#'+face.icon+'" x="'+c.vbX+'" y="'+c.vbY+'" width="'+c.vbW+'" height="'+c.vbH+'"/>';
+    return '<div class="die-combo-split">'+
+      '<svg class="'+(dimTop?'pip-dim':'pip-bright')+'" viewBox="'+c.vbX+' '+c.vbY+' '+c.vbW+' '+topH+'" style="width:100%;height:'+topPct+'%">'+useTag+'</svg>'+
+      '<svg class="'+(dimTop?'pip-bright':'pip-dim')+'" viewBox="'+c.vbX+' '+c.seamY+' '+c.vbW+' '+botH+'" style="width:100%;height:'+botPct+'%">'+useTag+'</svg>'+
+    '</div>';
+  }
+  return '<svg><use href="#'+face.icon+'"/></svg>';
+}
+/* ---- chip visuals: stacks (columns of 10, direct 1-credit-per-coin), and the flying-coin toss/scoop ---- */
+const COINS_PER_COLUMN=10;
+const MAX_STACK_COLUMNS=15; // sanity cap so a runaway total can't blow up the DOM
+function buildChipStackHTML(amount, attrs){
+  if(amount<=0) return '<div class="chip-stack"'+attrs+'><div class="chip-column"><div class="chip-coin empty"></div></div></div>';
+  const total=Math.min(amount, COINS_PER_COLUMN*MAX_STACK_COLUMNS);
+  const cols=Math.ceil(total/COINS_PER_COLUMN);
+  let html='<div class="chip-stack"'+attrs+'>';
+  for(let c=0;c<cols;c++){
+    const remaining=total-c*COINS_PER_COLUMN;
+    const inThisCol=Math.min(COINS_PER_COLUMN, remaining);
+    html+='<div class="chip-column">';
+    for(let i=0;i<inThisCol;i++){ html+='<div class="chip-coin"></div>'; }
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function chipStackMarkup(p){ return buildChipStackHTML(p.chips, ' data-seat="'+p.id+'"'); }
+function potStackMarkup(){ return buildChipStackHTML(G.pot, ''); }
+function spawnFlyingChip(fromEl, toEl, delayMs){
+  if(!fromEl || !toEl) return;
+  const layer=document.getElementById('chipFlyLayer');
+  if(!layer) return;
+  const fr=fromEl.getBoundingClientRect(), tr=toEl.getBoundingClientRect();
+  if((fr.width===0&&fr.height===0) || (tr.width===0&&tr.height===0)) return; // not laid out (e.g. headless test)
+  const sx=fr.left+fr.width/2-10, sy=fr.top+fr.height/2-5;
+  const ex=tr.left+tr.width/2-10, ey=tr.top+tr.height/2-5;
+  const dx=ex-sx, dy=ey-sy;
+  const mx=dx*0.5, my=dy*0.5-44;
+  const chip=document.createElement('div');
+  chip.className='flying-chip';
+  chip.style.left=sx+'px'; chip.style.top=sy+'px';
+  chip.style.setProperty('--dx',dx+'px'); chip.style.setProperty('--dy',dy+'px');
+  chip.style.setProperty('--mx',mx+'px'); chip.style.setProperty('--my',my+'px');
+  if(delayMs) chip.style.animationDelay=delayMs+'ms';
+  layer.appendChild(chip);
+  const cleanup=()=>{ if(chip.parentNode) chip.parentNode.removeChild(chip); };
+  chip.addEventListener('animationend',cleanup);
+  setTimeout(cleanup, 900+(delayMs||0));
+}
+function tossChips(fromEl, toEl, count){
+  const n=Math.max(1,Math.min(4,count));
+  for(let i=0;i<n;i++) spawnFlyingChip(fromEl,toEl,i*90);
+}
+function tossPlayerToPot(seat, amount){
+  const fromEl=document.querySelector('.chip-stack[data-seat="'+seat+'"]');
+  const toEl=document.getElementById('potPile');
+  const n=Math.max(1,Math.min(3,Math.ceil(amount/Math.max(1,G.ante))));
+  tossChips(fromEl,toEl,n);
+}
+function tossPotToPlayer(seat, amount, baseDelay){
+  const fromEl=document.getElementById('potPile');
+  const toEl=document.querySelector('.chip-stack[data-seat="'+seat+'"]');
+  const n=Math.max(1,Math.min(4,Math.ceil(amount/Math.max(1,G.ante))));
+  for(let i=0;i<n;i++) spawnFlyingChip(fromEl,toEl,(baseDelay||0)+i*90);
+}
+
+function render(){
+  if(!G) return;
+  document.getElementById('hudRound').textContent=G.round;
+  document.getElementById('hudHintaron').textContent=G.players[G.hintaronSeat].name;
+  document.getElementById('hudPot').textContent=G.pot;
+  document.getElementById('potAmt').textContent=G.pot;
+  const potPileEl=document.getElementById('potPile');
+  potPileEl.innerHTML=potStackMarkup();
+  potPileEl.classList.toggle('pot-empty', G.pot<=0);
+  const phaseLabels={ante:'Ante',throw:'Throw the Chazwa',bet1:'Wagers',bet2:'Final Call',reroll:'Reroll',hintarothrow:'Hintaro Throw',resolve:'Round Over'};
+  document.getElementById('hudPhase').textContent=phaseLabels[G.phase]||G.phase;
+  document.getElementById('hintaroDie').innerHTML = G.hintaroFace? dieIconMarkup(G.hintaroFace) : '<svg><use href="#ic-blank"/></svg>';
+
+  const bots=G.players.filter(p=>!p.isHuman);
+  document.getElementById('botRow').innerHTML = bots.map(p=>renderPod(p,false)).join('');
+  document.getElementById('youPod').innerHTML = renderPod(G.players[0],true);
+  document.getElementById('youPod').className = 'pod you'+(G.players[0].id===G.hintaronSeat?' hintaron':'')+(G.players[0].active&&!G.players[0].folded&&isCurrentActor(0)?' active-turn':'')+(G.players[0].folded?' folded':'');
+
+  renderScoreGuide();
+  renderActionPanel();
+}
+function renderScoreGuide(){
+  const youLine=document.getElementById('sgYouLine');
+  const rows=document.querySelectorAll('.sg-row');
+  const p=G.players[0];
+  const hand = (p && p.folded) ? null : computeLiveHand();
+
+  // Which row lights up: during the results screen it's the round's actual winning rank (so you can
+  // see exactly what beat you even if you folded); otherwise it's your own live hand as you play,
+  // or everything dims if you've already folded this round.
+  let targetRank=0, dimAll=false;
+  if(G.phase==='resolve') targetRank=G.winningRank||0;
+  else if(p && p.folded) dimAll=true;
+  else targetRank = hand ? hand.rank : 0;
+  rows.forEach(r=>{
+    const isMatch = !dimAll && targetRank>0 && parseInt(r.dataset.rank,10)===targetRank;
+    r.classList.toggle('match', isMatch);
+    r.classList.toggle('dim', dimAll || (targetRank>0 && !isMatch));
+  });
+
+  // The explainer text underneath always reflects your own hand/result, regardless of who won.
+  if(p && p.folded){
+    youLine.textContent='Folded';
+    youLine.classList.remove('ranked');
+    return;
+  }
+  if(!hand){
+    youLine.textContent='Roll to see';
+    youLine.classList.remove('ranked');
+    return;
+  }
+  let html = hand.t+'T / '+hand.k+'K<br>'+(hand.rank>0?hand.name:'no rank yet');
+  if(hand.cancelNote) html += '<br><span style="opacity:.7;font-size:.85em;">'+hand.cancelNote+'</span>';
+  if(G.phase==='resolve' && hand.rank===0){
+    const note=explainNoRank(hand.t,hand.k);
+    if(note) html += '<br><span style="opacity:.7;font-size:.85em;">'+note+'</span>';
+  }
+  youLine.innerHTML = html;
+  youLine.classList.toggle('ranked', hand.rank>0);
+}
+function isCurrentActor(seat){
+  if(G.phase==='bet1'||G.phase==='bet2') return G.betOrder[G.betIdx]===seat;
+  if(G.phase==='reroll') return G.rerollOrder[G.rerollIdx]===seat;
+  return false;
+}
+function renderPod(p,isYou){
+  const showResult = G.phase==='resolve';
+  const noRankNote = showResult ? explainNoRank(p.finalT,p.finalK) : '';
+  const rankInfo = showResult ? (p.finalName+' ('+p.finalT+'T/'+p.finalK+'K)'+(noRankNote?' — '+noRankNote:'')) : '';
+  const isWinner = showResult && p.finalRank>0 && !p.folded && G.pot===0;
+  let cls='pod'+(p.id===G.hintaronSeat?' hintaron':'')+(isCurrentActor(p.id)&&!isYou?' active-turn':'')+(p.folded?' folded':'');
+  return '<div class="'+cls+'" data-seat="'+p.id+'">'+
+    '<div class="pod-head"><span class="pod-name">'+p.name+(p.chips<=0?' (out)':'')+'</span>'+
+      (p.bet>0?'<span class="pot-chip">+'+p.bet+'</span>':'')+
+    '</div>'+
+    '<div class="chip-ledger">'+
+      chipStackMarkup(p)+
+      '<span class="credit-num">'+p.chips+' cr</span>'+
+    '</div>'+
+    '<div class="dice-row">'+p.dice.map((d,idx)=>{
+      const ct=G.cancelTargets&&G.cancelTargets[p.id];
+      const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
+      const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
+      const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
+      const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
+      return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
+    }).join('')+'</div>'+
+    (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':'')) +
+    '</div>';
+}
+
+function renderActionPanel(){
+  const panel=document.getElementById('actionPanel');
+  const p=G.players[0];
+  panel.classList.remove('betting-live');
+  if(G.phase==='ante'){
+    const upNext=G.anteOrder&&G.anteOrder[G.anteIdx];
+    if(upNext===0){
+      panel.classList.add('betting-live');
+      panel.innerHTML='<button class="btn btn-gold" style="width:100%" onclick="humanAnte()">ANTE UP '+G.ante+'</button>';
+    } else {
+      const nm=(upNext!==undefined&&G.players[upNext])?G.players[upNext].name:'Players';
+      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+nm+' is anteing…</span>';
+    }
+    return;
+  }
+  if(G.phase==='throw'){
+    panel.innerHTML=G.chazwaThrowing
+      ? '<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Rolling…</span>'
+      : '<button class="btn btn-gold" style="width:100%" onclick="throwChazwaForAll()">THROW THE CHAZWA</button>';
+    return;
+  }
+  if((G.phase==='bet1'||G.phase==='bet2')){
+    panel.classList.add('betting-live');
+    if(G.betOrder[G.betIdx]===0 && !p.folded){ return; } // renderBetActions handles it
+    panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
+    return;
+  }
+  if(G.phase==='reroll'){
+    if(G.rerollOrder[G.rerollIdx]===0 && !p.folded){ return; }
+    panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
+    return;
+  }
+  if(G.phase==='hintarothrow'){
+    if(G.hintaroThrowing){
+      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Throwing the Hintaro…</span>';
+    } else if(G.players[G.hintaronSeat].isHuman){
+      panel.innerHTML='<button class="btn btn-gold" onclick="throwHintaro()">THROW THE HINTARO</button>';
+    } else {
+      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+G.players[G.hintaronSeat].name+' is throwing the Hintaro…</span>';
+      setTimeout(throwHintaro, 700);
+    }
+    return;
+  }
+  if(G.phase==='resolve'){
+    panel.innerHTML='<button class="btn btn-cta" onclick="nextRound()">NEXT ROUND</button>';
+    return;
+  }
+  panel.innerHTML='';
+}
+
+function renderBetActions(seat){
+  const panel=document.getElementById('actionPanel');
+  panel.classList.add('betting-live');
+  const p=G.players[seat];
+  const callAmt=playerCallAmt(p);
+  let html='';
+  if(G.phase==='bet2'){
+    html+='<div class="actions-row">';
+    html+='<button class="btn btn-cta" onclick="humanBet(\'call\')">SEE '+Math.min(callAmt,p.chips)+'</button>';
+    html+='<button class="btn btn-danger" onclick="humanBet(\'fold\')">FOLD</button>';
+    html+='</div>';
+    panel.innerHTML=html;
+    return;
+  }
+  const isOpen=callAmt===0;
+  const floor=isOpen? G.minBet : G.currentBet+G.minBet;
+  const cap=p.bet+p.chips;
+  if(wagerAmt<floor || wagerAmt>cap) wagerAmt=Math.min(floor,cap);
+  html+='<div class="wager-block">';
+  html+='  <div class="wager-label">'+(isOpen?'Set Your Bet':'Set Your Raise')+'</div>';
+  html+='  <div class="wager-stepper">';
+  html+='    <button class="step-btn" onclick="adjustWagerAmt(-1)" '+(wagerAmt<=floor?'disabled':'')+'>−</button>';
+  html+='    <div class="wager-amt">'+wagerAmt+'<span class="wager-unit">cr</span></div>';
+  html+='    <button class="step-btn" onclick="adjustWagerAmt(1)" '+(wagerAmt>=cap?'disabled':'')+'>+</button>';
+  html+='  </div>';
+  html+='  <div class="wager-quick">';
+  html+='    <button class="chip-btn" onclick="setWagerAmt('+floor+')">MIN</button>';
+  html+='    <button class="chip-btn" onclick="setWagerAmt('+cap+')">ALL IN</button>';
+  html+='  </div>';
+  html+='</div>';
+  html+='<div class="actions-row">';
+  if(isOpen){
+    html+='<button class="btn btn-cta" onclick="humanBet(\'check\')">CHECK</button>';
+    html+='<button class="btn btn-gold" onclick="humanBet(\'wager\','+wagerAmt+')">BET '+wagerAmt+'</button>';
+  } else {
+    html+='<button class="btn btn-cta" onclick="humanBet(\'call\')">SEE '+Math.min(callAmt,p.chips)+'</button>';
+    html+='<button class="btn btn-gold" onclick="humanBet(\'wager\','+wagerAmt+')">RAISE TO '+wagerAmt+'</button>';
+  }
+  html+='<button class="btn btn-danger" onclick="humanBet(\'fold\')">FOLD</button>';
+  html+='</div>';
+  panel.innerHTML=html;
+}
+function renderRerollActions(seat){
+  const panel=document.getElementById('actionPanel');
+  panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel);flex-basis:100%;text-align:center;">Tap one of your dice above to reroll it, or keep both.</span>'+
+    '<button class="btn btn-cta" onclick="humanReroll(-1)">KEEP BOTH</button>';
+  // make dice in youPod clickable
+  const youPod=document.getElementById('youPod');
+  const dice=youPod.querySelectorAll('.dice-row .die');
+  dice.forEach((el,i)=>{
+    el.classList.add('selectable');
+    el.onclick=()=>humanReroll(i);
+  });
+}
+
+/* ============================= UI GLUE ============================= */
+function toggleLegend(){
+  const panel=document.getElementById('legendPanel');
+  panel.classList.toggle('open');
+  document.getElementById('btnHelp').classList.toggle('active');
+}
+function showTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+function toggleSound(){
+  const muted=HAudio.toggleMute();
+  document.getElementById('btnSound').classList.toggle('active', !muted);
+  document.getElementById('btnSound').textContent = muted? '🔇 SOUND' : '🔊 SOUND';
+}
+document.querySelectorAll('.segmented').forEach(seg=>{
+  seg.addEventListener('click', e=>{
+    if(e.target.tagName!=='BUTTON') return;
+    seg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active');
+    HAudio.click();
+  });
+});
+</script>
+</body>
+</html>
