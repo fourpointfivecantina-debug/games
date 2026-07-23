@@ -36,7 +36,7 @@ html,body{background:#05090d;margin:0;padding:0;}
 body{
   min-height:100vh; display:flex; flex-direction:column; align-items:center;
   font-family:var(--font); color:var(--sh-ink); position:relative;
-  padding:14px 10px 40px; overflow-x:hidden;
+  padding:14px 10px 24px; overflow-x:hidden;
 }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -51,16 +51,68 @@ body::after{
 
 .panel{
   width:100%; max-width:600px; background:var(--sh-hud); border:1px solid rgba(159,184,195,.2);
-  border-radius:10px; padding:10px 12px; margin-bottom:10px;
+  border-radius:5px; padding:10px 12px; margin-bottom:10px;
 }
+/* Signature side-notch cut into this panel's frame — it's the one holding the shared Hintaro die,
+   so it gets the console-housing detail from the concept pass. Notch spans exactly 25%-75% of the
+   box (50% of the real, dynamically-sized panel height, centered on its midpoint — not a fixed
+   pixel value copied from the mockup, which wouldn't hold that proportion once the panel's actual
+   height varies by content/viewport). Small 5px chamfers approximate the panel's own border-radius
+   at the four true corners so clip-path doesn't quietly square them off. */
+.center-area{
+  clip-path: polygon(
+    5px 0, calc(100% - 5px) 0, 100% 5px,
+    100% 25%, calc(100% - 12px) calc(25% + 8px), calc(100% - 12px) calc(75% - 8px), 100% 75%,
+    100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px),
+    0 75%, 12px calc(75% - 8px), 12px calc(25% + 8px), 0 25%,
+    0 5px
+  );
+}
+/* A slim single-line instrument strip rather than a stack of two-line stat blocks — every value
+   sits inline with its (tiny, muted) label, so the whole readout reads as one HUD line instead of
+   four separate little cards. Now lives INSIDE the merged Hintaro panel (see .center-area) as its
+   top strip, rather than as its own separate panel — no background/border/radius of its own here,
+   the parent panel already provides that frame. */
 .status-bar{
-  display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between;
-  border-top:2px solid var(--sh-teal); box-shadow:inset 0 1px 0 rgba(22,209,225,.06);
+  position:relative; min-height:52px;
+  display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; justify-content:space-between;
+  border-top:2px solid var(--sh-teal); border-bottom:1px solid rgba(159,184,195,.15);
+  box-shadow:inset 0 1px 0 rgba(22,209,225,.06); padding-bottom:8px;
 }
-.status-item{display:flex; flex-direction:column; gap:2px; align-items:center; min-width:70px;}
-.status-item .lbl{font-size:.44rem; letter-spacing:.2em; color:var(--sh-steel); text-transform:uppercase;}
-.status-item .val{font-size:.85rem; font-weight:900; color:var(--sh-tealHi);}
+.status-item{display:flex; flex-direction:row; align-items:baseline; gap:5px; transition:opacity .12s ease;}
+.status-item .lbl{font-size:.42rem; letter-spacing:.16em; color:var(--sh-steel); text-transform:uppercase;}
+.status-item .val{font-size:.78rem; font-weight:900; color:var(--sh-tealHi);}
 .status-item .val.gold{color:var(--sh-gold);}
+/* While the announcement is up, the Round/Hintaron/Pot/Phase values underneath serve no purpose —
+   hide them outright (visibility, not display, so the bar's height/box stays exactly the same and
+   the overlay never resizes) rather than just letting the overlay visually paper over them. */
+.status-bar.announcing .status-item{visibility:hidden; opacity:0;}
+
+/* Win/no-win/out-of-credits messages superimpose directly over this status bar — same box,
+   same footprint, so nothing above or below it ever shifts. It replaces Round/Hintaron/Pot/Phase
+   until "Next Round" is clicked (startRound() dismisses it), or it can be tapped away early.
+   Same gold radial hologram-glow treatment as the Dejarik winner-banner — glow is part of the
+   house style here, not something to avoid; the earlier flat-panel version was the wrong call. */
+.sg-announce{
+  position:absolute; inset:0; z-index:5; box-sizing:border-box; border-radius:9px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  padding:2px 12px; overflow:hidden;
+  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.18) 0%, var(--sh-panelB) 75%);
+  border:1.5px solid var(--sh-gold);
+  box-shadow:0 0 28px rgba(201,168,76,.18), inset 0 1px 0 rgba(201,168,76,.12);
+  opacity:0; pointer-events:none; transform:scale(.95);
+  transition:opacity .2s ease, transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.sg-announce.show{opacity:1; pointer-events:auto; transform:scale(1); cursor:pointer;}
+.sg-announce-title{
+  font-size:.9rem; font-weight:900; letter-spacing:.12em; color:var(--sh-gold);
+  text-shadow:0 0 18px rgba(201,168,76,.5);
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sg-announce-sub{
+  font-size:.46rem; letter-spacing:.04em; line-height:1.3; color:var(--sh-steel); margin-top:2px;
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 
 .table-area{width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; margin-bottom:10px;}
 /* Always exactly one row, however many droids are seated — the column count tracks --bot-count
@@ -69,16 +121,28 @@ body::after{
 .bot-row{display:grid; grid-template-columns:repeat(var(--bot-count,2), 1fr); gap:8px;}
 .pod{
   background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
-  border:1px solid #2a4b55; border-radius:10px; padding:8px 10px;
+  border:1px solid #2a4b55; border-radius:5px; padding:8px 10px;
   position:relative; transition:box-shadow .25s, border-color .25s;
 }
 .bot-row .pod{min-width:0; max-width:none;}
-.pod.you{max-width:100%; flex:1 1 100%; display:flex; flex-direction:column; align-items:center;}
-.pod.you .pod-head{width:100%; max-width:320px; justify-content:center; gap:10px;}
-.pod.you .chip-ledger{width:100%; max-width:320px;}
-.pod.you .dice-row{justify-content:center;}
+/* Two centered columns per droid pod: chips on the left, both dice stacked vertically on the
+   right (see .dice-row). A real 2-col grid rather than flex-wrap, since both columns should stay
+   put and centered regardless of width, not reflow. */
+.pod-body{width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center; justify-items:center;}
+.pod-body .chip-ledger{margin-bottom:0;}
+.pod.you{max-width:100%; flex:1 1 100%;}
 .pod.you .pod-rank{text-align:center;}
+/* Active-turn now reads via targeting brackets on all four corners (see .pod-bracket) in addition
+   to the existing glow — the same "acting now" language validated in the concept pass, generalized
+   to whichever pod (droid or you) currently has the floor. */
 .pod.active-turn{border-color:var(--sh-teal); box-shadow:0 0 18px rgba(22,209,225,.25);}
+.pod-bracket{position:absolute; width:10px; height:10px; border:1.6px solid var(--sh-teal); opacity:0; transition:opacity .15s; pointer-events:none;}
+.pod.active-turn .pod-bracket{opacity:1; animation:podBracketPulse 1.1s ease-in-out infinite;}
+.pod-bracket.tl{top:-5px; left:-5px; border-right:none; border-bottom:none;}
+.pod-bracket.tr{top:-5px; right:-5px; border-left:none; border-bottom:none;}
+.pod-bracket.bl{bottom:-5px; left:-5px; border-right:none; border-top:none;}
+.pod-bracket.br{bottom:-5px; right:-5px; border-left:none; border-top:none;}
+@keyframes podBracketPulse{0%,100%{opacity:1;} 50%{opacity:.3;}}
 .pod.folded{opacity:.42;}
 .pod.hintaron::before{
   content:"HINTARON"; position:absolute; top:-9px; right:8px; background:var(--sh-gold); color:var(--sh-bg);
@@ -107,18 +171,25 @@ body::after{
   background:transparent; border:1.5px dashed rgba(159,184,195,.35); box-shadow:none;
 }
 .credit-num{font-size:.48rem; font-weight:700; color:var(--sh-steel); white-space:nowrap; flex-shrink:0; padding-bottom:2px;}
-.dice-row{display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+/* Both Chazwa dice stack vertically now (droid pods and the You panel alike) rather than sitting
+   side by side — the column above/below it stays centered either way. */
+.dice-row{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center;}
+/* Flat + glow, not shaded + beveled — a vector object with a lit edge, not a physical cube.
+   Matches the Dejarik piece treatment: solid dark fill, a crisp colored ring, glow from box-shadow
+   alone, never an inset highlight/shadow implying a 3D surface. */
 .die{
   width:clamp(44px,12vw,56px); height:clamp(44px,12vw,56px); border-radius:8px;
   background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
   border:1.5px solid var(--sh-edge); display:flex; align-items:center; justify-content:center;
   cursor:default; position:relative; flex-shrink:0;
+  box-shadow:0 0 10px rgba(22,209,225,.10);
+  transition:border-color .15s, box-shadow .15s;
 }
 .die svg{width:78%; height:78%;}
 .die-unrolled{width:22%; height:22%; border-radius:50%; background:rgba(159,184,195,.18); border:1px solid rgba(159,184,195,.3);}
 .die.selectable{cursor:pointer;}
-.die.selectable:hover{border-color:var(--sh-tealHi); box-shadow:0 0 14px rgba(22,209,225,.25);}
-.die.marked{border-color:var(--sh-gold); box-shadow:0 0 16px rgba(201,168,76,.45);}
+.die.selectable:hover{border-color:var(--sh-tealHi); box-shadow:0 0 16px rgba(22,209,225,.35);}
+.die.marked{border-color:var(--sh-gold); box-shadow:0 0 18px rgba(201,168,76,.55);}
 .die.rolling svg{animation:dieSpin .5s ease-out;}
 @keyframes dieSpin{ 0%{transform:rotate(0) scale(.6); opacity:.3;} 60%{transform:rotate(300deg) scale(1.1);} 100%{transform:rotate(360deg) scale(1); opacity:1;} }
 
@@ -175,10 +246,25 @@ body::after{
 .pod-rank{font-size:.46rem; letter-spacing:.08em; color:var(--sh-steel); margin-top:5px;}
 .pod-rank.win{color:var(--sh-gold); font-weight:900;}
 
-.center-area{display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center; padding:8px 0;}
+/* The merged Hintaro panel: status/announcement strip across the top, then three columns below —
+   chips/pot (left), the shared Hintaro die (middle), rankings (right). Same grid class is reused
+   for the You panel's own three columns so the two rows align automatically without hand-tuned
+   pixel matching. */
+.center-area{display:flex; flex-direction:column; gap:10px;}
+.hintaro-columns{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; align-items:start;}
+.hp-col{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0;}
+/* Single button-height row shared by two mutually-exclusive uses: normally it holds the roll/reroll
+   controls (Throw the Chazwa, tap-a-die-to-reroll + Keep Both, Throw the Hintaro, Next Round), but
+   while you're actively sizing a bet or raise it temporarily shows the compact bet-set stepper
+   instead (see .wager-inline) — never both at once. */
+.control-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; width:100%; margin-top:8px; min-height:34px;}
+.wager-inline{width:100%; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px;}
+.wager-tag{font-size:.5rem; letter-spacing:.16em; color:var(--sh-gold); text-transform:uppercase; font-weight:700;}
+/* The pot is the thing every round revolves around — it should look like the biggest number on
+   the table, not just another same-size stat. Real scale contrast, not just a color difference. */
 .pot-display{display:flex; flex-direction:column; align-items:center; gap:2px;}
 .pot-display .lbl{font-size:.46rem; letter-spacing:.22em; color:var(--sh-steel);}
-.pot-display .amt{font-size:1.3rem; font-weight:900; color:var(--sh-gold); text-shadow:0 0 18px rgba(201,168,76,.5);}
+.pot-display .amt{font-size:2.1rem; font-weight:900; color:var(--sh-gold); text-shadow:0 0 22px rgba(201,168,76,.55); line-height:1;}
 .pot-pile{
   min-width:60px; min-height:52px; position:relative; margin:2px 0;
   display:flex; align-items:flex-end; justify-content:center;
@@ -202,7 +288,26 @@ body::after{
 }
 .hintaro-die-wrap{display:flex; flex-direction:column; align-items:center; gap:4px;}
 .hintaro-die-wrap .lbl{font-size:.42rem; letter-spacing:.2em; color:var(--sh-steel);}
-.die.hintaro-die{width:clamp(48px,13vw,60px); height:clamp(48px,13vw,60px); border-color:var(--sh-gold); box-shadow:0 0 14px rgba(201,168,76,.18);}
+/* Targeting-reticle brackets on the one die every player watches each round — a live element,
+   not a static drawing: continuously blinks gold to teal, echoing the same corner-bracket
+   language used to flag whoever's acting turn it is (see .pod-bracket). */
+.hintaro-die-frame{position:relative; display:inline-flex;}
+.hd-bracket{position:absolute; width:10px; height:10px; border:1.6px solid var(--sh-gold); animation:hdBracketBlink 1.6s ease-in-out infinite; pointer-events:none;}
+.hd-bracket.tl{top:-6px; left:-6px; border-right:none; border-bottom:none;}
+.hd-bracket.tr{top:-6px; right:-6px; border-left:none; border-bottom:none;}
+.hd-bracket.bl{bottom:-6px; left:-6px; border-right:none; border-top:none;}
+.hd-bracket.br{bottom:-6px; right:-6px; border-left:none; border-top:none;}
+@keyframes hdBracketBlink{0%,100%{border-color:var(--sh-gold); opacity:1;} 50%{border-color:var(--sh-teal); opacity:.5;}}
+/* The one die every player shares deserves to feel like the centerpiece it is — a slow gold
+   breathing glow instead of a static thin outline. */
+.die.hintaro-die{
+  width:clamp(48px,13vw,60px); height:clamp(48px,13vw,60px); border-color:var(--sh-gold);
+  animation:hintaroBreathe 3s ease-in-out infinite;
+}
+@keyframes hintaroBreathe{
+  0%,100%{box-shadow:0 0 12px rgba(201,168,76,.3);}
+  50%{box-shadow:0 0 22px rgba(201,168,76,.55);}
+}
 
 .log-panel{max-height:110px; overflow-y:auto; font-size:.56rem; line-height:1.5; color:var(--sh-steel);}
 .log-panel p{margin:0 0 3px;}
@@ -214,7 +319,7 @@ body::after{
 .wager-label{font-size:.5rem; letter-spacing:.2em; color:var(--sh-gold); text-transform:uppercase; font-weight:700;}
 .wager-stepper{display:flex; align-items:center; gap:12px;}
 .step-btn{
-  width:34px; height:34px; border-radius:8px; font-family:var(--font); font-size:1rem; font-weight:900;
+  width:34px; height:34px; border-radius:0; font-family:var(--font); font-size:1rem; font-weight:900;
   border:1.5px solid var(--sh-teal); background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
   color:var(--sh-tealHi); cursor:pointer; line-height:1;
   transition:filter .15s, transform .1s;
@@ -227,7 +332,7 @@ body::after{
 .wager-quick{display:flex; gap:8px;}
 .chip-btn{
   font-family:var(--font); font-size:.46rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-  background:transparent; border:1px solid var(--sh-steel); color:var(--sh-steel); padding:4px 10px; border-radius:14px; cursor:pointer;
+  background:transparent; border:1px solid var(--sh-steel); color:var(--sh-steel); padding:4px 10px; border-radius:0; cursor:pointer;
   transition:filter .15s, transform .1s;
 }
 .actions-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:100%;}
@@ -237,7 +342,7 @@ body::after{
 .btn{
   font-family:var(--font); font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:.6rem;
   border:1.5px solid var(--sh-teal); background:var(--sh-teal); color:var(--sh-bg);
-  padding:9px 14px; border-radius:8px; cursor:pointer;
+  padding:9px 14px; border-radius:0; cursor:pointer;
   box-shadow:0 0 20px rgba(22,209,225,.4);
   transition:filter .15s, transform .1s; flex:1 1 auto; min-width:90px;
 }
@@ -253,7 +358,7 @@ body::after{
 .icon-btn{
   font-family:var(--font); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:.5rem;
   border:1.5px solid var(--sh-teal); background:linear-gradient(160deg,#0c2229 0%,#061017 100%);
-  color:var(--sh-tealHi); padding:7px 10px; border-radius:8px; cursor:pointer;
+  color:var(--sh-tealHi); padding:7px 10px; border-radius:0; cursor:pointer;
 }
 .icon-btn.active{background:linear-gradient(160deg,#143844 0%,#0a1c24 100%); box-shadow:0 0 18px rgba(22,209,225,.28);}
 
@@ -265,7 +370,7 @@ body::after{
 .tabs{display:flex; gap:6px; margin-bottom:8px;}
 .tab-btn{
   flex:1; font-family:var(--font); font-size:.5rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
-  background:transparent; border:1px solid rgba(159,184,195,.25); color:var(--sh-steel); padding:6px; border-radius:6px; cursor:pointer;
+  background:transparent; border:1px solid rgba(159,184,195,.25); color:var(--sh-steel); padding:6px; border-radius:0; cursor:pointer;
 }
 .tab-btn.active{border-color:var(--sh-teal); color:var(--sh-tealHi); background:rgba(22,209,225,.08);}
 .tab-content{display:none;}
@@ -313,7 +418,7 @@ body::after{
   50%{ box-shadow:0 0 18px rgba(201,168,76,.5); }
 }
 
-.segmented{display:flex; border:1px solid rgba(159,184,195,.25); border-radius:8px; overflow:hidden; margin-bottom:8px;}
+.segmented{display:flex; border:1px solid rgba(159,184,195,.25); border-radius:0; overflow:hidden; margin-bottom:8px;}
 .segmented button{
   flex:1; font-family:var(--font); font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
   background:transparent; border:none; border-right:1px solid rgba(159,184,195,.2); color:var(--sh-steel); padding:8px 4px; cursor:pointer;
@@ -331,25 +436,6 @@ body::after{
 .settings-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;}
 .settings-row label{font-size:.55rem; letter-spacing:.08em; color:var(--sh-ink);}
 
-/* Win/no-win announcements used to live in a separate banner above the status bar — reserving
-   permanent space for it wasted room, but animating it in/out instead made the whole page jump.
-   Now the announcement is an overlay INSIDE the Rankings panel: that panel's size never changes,
-   so nothing above or below it ever shifts. Tap the overlay to dismiss and see the ranked list
-   underneath (with the winning row already highlighted). */
-.sg-rankings{position:relative; min-height:118px;}
-.sg-announce{
-  position:absolute; inset:0; z-index:5; box-sizing:border-box;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-  padding:10px; border-radius:8px; cursor:pointer;
-  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.18) 0%, var(--sh-panelB) 75%);
-  border:1.5px solid var(--sh-gold);
-  opacity:0; pointer-events:none; transform:scale(.96);
-  transition:opacity .18s ease, transform .18s ease;
-}
-.sg-announce.show{opacity:1; pointer-events:auto; transform:scale(1);}
-.sg-announce-title{font-size:.85rem; font-weight:900; letter-spacing:.1em; color:var(--sh-gold); text-shadow:0 0 16px rgba(201,168,76,.5);}
-.sg-announce-sub{font-size:.46rem; line-height:1.4; color:var(--sh-steel); margin-top:5px;}
-.sg-announce-tap{font-size:.4rem; letter-spacing:.12em; text-transform:uppercase; color:var(--sh-teal); opacity:.8; margin-top:9px;}
 
 .start-overlay{
   position:fixed; inset:0; z-index:20; background:rgba(5,9,13,.92); display:flex; align-items:center; justify-content:center; padding:16px;
@@ -357,7 +443,7 @@ body::after{
 }
 .start-card{
   width:100%; max-width:420px; background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
-  border:1.5px solid var(--sh-teal); border-radius:12px; padding:22px; box-shadow:0 0 40px rgba(22,209,225,.2);
+  border:1.5px solid var(--sh-teal); border-radius:6px; padding:22px; box-shadow:0 0 40px rgba(22,209,225,.2);
   margin:auto;
 }
 .start-card h2{
@@ -387,7 +473,7 @@ body::after{
 
 /* ============================= MOBILE ============================= */
 @media (max-width:600px){
-  body{padding:8px 7px 20px;}
+  body{padding:8px 7px 16px;}
 
   /* The fixed Full Screen pill floats over the top of the page; on mobile the .wrap spans nearly
      the full width so it would otherwise collide with the status bar's rightmost items. Reserve
@@ -432,14 +518,10 @@ body::after{
   .status-item{min-width:0;}
   .status-item .val{font-size:.66rem; max-width:30vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
-  /* The four center-row blocks (Your Hand / Pot / Hintaro Die / Rankings) wrap unevenly at narrow
-     widths since Rankings is inherently wider than the other three. Force a clean 2x2 grid instead,
-     with the two "core" objects (Pot, Hintaro Die) on top and the two reference panels below. */
-  .center-area{display:grid; grid-template-columns:1fr 1fr; gap:8px 6px; align-items:start; justify-items:center; padding:4px 0;}
-  .pot-display{order:1;}
-  .hintaro-die-wrap{order:2;}
-  .sg-explain{order:3; max-width:none; width:100%;}
-  .sg-rankings{order:4; width:100%;}
+  /* Keep the same three-column arrangement at phone widths (validated in the concept pass) —
+     just tighten the gaps rather than relaying out into a grid. */
+  .hintaro-columns{gap:6px;}
+  .hp-col{gap:2px;}
   .sg-rows{gap:1px;}
 
   /* A little breathing room back for the smallest legible text. */
@@ -497,64 +579,74 @@ body::after{
 </svg>
 
 <div class="wrap">
-  <div class="panel status-bar">
-    <div class="status-item"><span class="lbl">Round</span><span class="val" id="hudRound">1</span></div>
-    <div class="status-item"><span class="lbl">Hintaron</span><span class="val gold" id="hudHintaron">—</span></div>
-    <div class="status-item"><span class="lbl">Pot</span><span class="val gold" id="hudPot">0</span></div>
-    <div class="status-item"><span class="lbl">Phase</span><span class="val" id="hudPhase">—</span></div>
-  </div>
-
   <div class="table-area">
     <div class="bot-row" id="botRow"></div>
+
     <div class="panel center-area">
-      <div class="sg-explain">
-        <span class="lbl">YOUR HAND</span>
-        <span class="sg-you" id="sgYouLine">Roll to see</span>
-      </div>
-      <div class="pot-display">
-        <span class="lbl">POT</span>
-        <div class="pot-pile" id="potPile"></div>
-        <span class="amt" id="potAmt">0</span>
-      </div>
-      <div class="hintaro-die-wrap">
-        <span class="lbl">HINTARO DIE</span>
-        <div class="die hintaro-die" id="hintaroDie"><svg><use href="#ic-blank"/></svg></div>
-      </div>
-      <div class="sg-rankings" id="scoreGuide">
-        <span class="lbl">RANKINGS</span>
-        <div class="sg-rows">
-          <div class="sg-row" data-rank="1">
-            <span class="sg-rk">1</span>
-            <span class="sg-dice"><svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></span>
-            <span class="sg-name">Tukar-Kulro</span>
-          </div>
-          <div class="sg-row" data-rank="2">
-            <span class="sg-rk">2</span>
-            <span class="sg-dice"><svg><use href="#ic-kulrokulro"/></svg><svg><use href="#ic-kulrokulro"/></svg></span>
-            <span class="sg-name">Quadro-Kulro</span>
-          </div>
-          <div class="sg-row" data-rank="3">
-            <span class="sg-rk">3</span>
-            <span class="sg-dice"><svg><use href="#ic-tukar"/></svg><svg><use href="#ic-tukar"/></svg></span>
-            <span class="sg-name">Tukar-Tukar</span>
-          </div>
-          <div class="sg-row" data-rank="4">
-            <span class="sg-rk">4</span>
-            <span class="sg-dice"><svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></span>
-            <span class="sg-name">Kulro-Kulro</span>
-          </div>
-        </div>
+      <div class="status-bar" id="statusBar">
+        <div class="status-item"><span class="lbl">Round</span><span class="val" id="hudRound">1</span></div>
+        <div class="status-item"><span class="lbl">Hintaron</span><span class="val gold" id="hudHintaron">—</span></div>
+        <div class="status-item"><span class="lbl">Pot</span><span class="val gold" id="hudPot">0</span></div>
+        <div class="status-item"><span class="lbl">Phase</span><span class="val" id="hudPhase">—</span></div>
         <div class="sg-announce" id="sgAnnounce" onclick="dismissAnnounce()">
           <div class="sg-announce-title" id="sgAnnounceTitle">—</div>
           <div class="sg-announce-sub" id="sgAnnounceSub">—</div>
-          <div class="sg-announce-tap">tap to see rankings</div>
+        </div>
+      </div>
+      <div class="hintaro-columns">
+        <div class="hp-col hp-col-pot">
+          <div class="pot-display">
+            <span class="lbl">POT</span>
+            <div class="pot-pile" id="potPile"></div>
+            <span class="amt" id="potAmt">0</span>
+          </div>
+        </div>
+        <div class="hp-col hp-col-die">
+          <div class="hintaro-die-wrap">
+            <span class="lbl">HINTARO DIE</span>
+            <div class="hintaro-die-frame">
+              <div class="die hintaro-die" id="hintaroDie"><svg><use href="#ic-blank"/></svg></div>
+              <span class="hd-bracket tl"></span><span class="hd-bracket tr"></span>
+              <span class="hd-bracket bl"></span><span class="hd-bracket br"></span>
+            </div>
+          </div>
+        </div>
+        <div class="hp-col hp-col-rankings">
+          <div class="sg-rankings" id="scoreGuide">
+            <span class="lbl">RANKINGS</span>
+            <div class="sg-rows">
+              <div class="sg-row" data-rank="1">
+                <span class="sg-rk">1</span>
+                <span class="sg-dice"><svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></span>
+                <span class="sg-name">Tukar-Kulro</span>
+              </div>
+              <div class="sg-row" data-rank="2">
+                <span class="sg-rk">2</span>
+                <span class="sg-dice"><svg><use href="#ic-kulrokulro"/></svg><svg><use href="#ic-kulrokulro"/></svg></span>
+                <span class="sg-name">Quadro-Kulro</span>
+              </div>
+              <div class="sg-row" data-rank="3">
+                <span class="sg-rk">3</span>
+                <span class="sg-dice"><svg><use href="#ic-tukar"/></svg><svg><use href="#ic-tukar"/></svg></span>
+                <span class="sg-name">Tukar-Tukar</span>
+              </div>
+              <div class="sg-row" data-rank="4">
+                <span class="sg-rk">4</span>
+                <span class="sg-dice"><svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></span>
+                <span class="sg-name">Kulro-Kulro</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="pod you" id="youPod"></div>
-  </div>
 
-  <div class="panel actions" id="actionPanel"></div>
+    <div class="pod you" id="youPod">
+      <span class="pod-bracket tl"></span><span class="pod-bracket tr"></span>
+      <span class="pod-bracket bl"></span><span class="pod-bracket br"></span>
+      <div id="youPodInner"></div>
+    </div>
+  </div>
 
   <div class="icon-row">
     <button class="icon-btn" id="btnHelp" onclick="toggleLegend()">☰ RULES</button>
@@ -807,17 +899,21 @@ function restartGame(){
   dismissAnnounce();
 }
 
-/* Win/no-win/out-of-credits messages surface as an overlay INSIDE the fixed-size Rankings panel
-   rather than a separate banner — the panel's box never changes size, so nothing above or below
-   it ever jumps. Tapping the overlay (or starting the next round) dismisses it. */
+/* Win/no-win/out-of-credits messages surface as an overlay superimposed on the fixed-size status
+   bar rather than a separate banner — the bar's box never changes size, so nothing above or below
+   it ever jumps. The Round/Hintaron/Pot/Phase values underneath are fully hidden (not just visually
+   covered) while it's up. Tapping the overlay (or starting the next round) dismisses it. */
 function showAnnounce(title, sub){
-  document.getElementById('sgAnnounceTitle').textContent=title;
+  document.getElementById('sgAnnounceTitle').textContent='⬟ '+title+' ⬟';
   document.getElementById('sgAnnounceSub').textContent=sub;
   document.getElementById('sgAnnounce').classList.add('show');
+  document.getElementById('statusBar').classList.add('announcing');
 }
 function dismissAnnounce(){
   const el=document.getElementById('sgAnnounce');
   if(el) el.classList.remove('show');
+  const bar=document.getElementById('statusBar');
+  if(bar) bar.classList.remove('announcing');
 }
 
 function logMsg(msg,cls){
@@ -1340,7 +1436,7 @@ function render(){
   const botRowEl=document.getElementById('botRow');
   botRowEl.style.setProperty('--bot-count', bots.length);
   botRowEl.innerHTML = bots.map(p=>renderPod(p,false)).join('');
-  document.getElementById('youPod').innerHTML = renderPodInner(G.players[0]);
+  document.getElementById('youPodInner').innerHTML = renderYouPodInner(G.players[0]);
   document.getElementById('youPod').className = 'pod you'+(G.players[0].id===G.hintaronSeat?' hintaron':'')+(G.players[0].active&&!G.players[0].folded&&isCurrentActor(0)?' active-turn':'')+(G.players[0].folded?' folded':'');
   document.getElementById('youPod').setAttribute('data-seat', G.players[0].id);
 
@@ -1399,106 +1495,157 @@ function renderPodInner(p){
   return '<div class="pod-head"><span class="pod-name">'+p.name+(p.chips<=0?' (out)':'')+'</span>'+
       (p.bet>0?'<span class="pot-chip">+'+p.bet+'</span>':'')+
     '</div>'+
-    '<div class="chip-ledger">'+
-      chipStackMarkup(p)+
-      '<span class="credit-num">'+p.chips+' cr</span>'+
+    '<div class="pod-body">'+
+      '<div class="chip-ledger">'+
+        chipStackMarkup(p)+
+        '<span class="credit-num">'+p.chips+' cr</span>'+
+      '</div>'+
+      '<div class="dice-row">'+p.dice.map((d,idx)=>{
+        const ct=G.cancelTargets&&G.cancelTargets[p.id];
+        const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
+        const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
+        const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
+        const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
+        return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
+      }).join('')+'</div>'+
     '</div>'+
-    '<div class="dice-row">'+p.dice.map((d,idx)=>{
-      const ct=G.cancelTargets&&G.cancelTargets[p.id];
-      const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
-      const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
-      const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
-      const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
-      return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
-    }).join('')+'</div>'+
     (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':''));
 }
+const POD_BRACKETS='<span class="pod-bracket tl"></span><span class="pod-bracket tr"></span><span class="pod-bracket bl"></span><span class="pod-bracket br"></span>';
 function renderPod(p,isYou){
   let cls='pod'+(p.id===G.hintaronSeat?' hintaron':'')+(isCurrentActor(p.id)&&!isYou?' active-turn':'')+(p.folded?' folded':'');
-  return '<div class="'+cls+'" data-seat="'+p.id+'">'+renderPodInner(p)+'</div>';
+  return '<div class="'+cls+'" data-seat="'+p.id+'">'+POD_BRACKETS+renderPodInner(p)+'</div>';
+}
+/* The You pod gets its own three-column body (chips/pot, your stacked dice + live hand read, the
+   actual check/bet/fold decision buttons) plus a single shared control row underneath — distinct
+   from the droid pods' simpler chips/dice-stacked layout, per the block-console layout. #bettingCol
+   and #controlRow are populated by renderActionPanel()/renderBetActions()/renderRerollActions()
+   right after this HTML is injected, same as the old fixed dock did. */
+function renderYouPodInner(p){
+  const showResult = G.phase==='resolve';
+  const noRankNote = showResult ? explainNoRank(p.finalT,p.finalK) : '';
+  const rankInfo = showResult ? (p.finalName+' ('+p.finalT+'T/'+p.finalK+'K)'+(noRankNote?' — '+noRankNote:'')) : '';
+  const isWinner = showResult && p.finalRank>0 && !p.folded && G.pot===0;
+  return '<div class="pod-head"><span class="pod-name">You</span>'+
+      (p.bet>0?'<span class="pot-chip">+'+p.bet+'</span>':'')+
+    '</div>'+
+    '<div class="hintaro-columns">'+
+      '<div class="hp-col hp-col-pot">'+
+        '<div class="chip-ledger">'+chipStackMarkup(p)+'<span class="credit-num">'+p.chips+' cr</span></div>'+
+      '</div>'+
+      '<div class="hp-col hp-col-die">'+
+        '<div class="dice-row">'+p.dice.map((d,idx)=>{
+          const ct=G.cancelTargets&&G.cancelTargets[p.id];
+          const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
+          const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
+          const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
+          const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
+          return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
+        }).join('')+'</div>'+
+        '<div class="sg-explain">'+
+          '<span class="lbl">YOUR HAND</span>'+
+          '<span class="sg-you" id="sgYouLine">Roll to see</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="hp-col hp-col-betting" id="bettingCol"></div>'+
+    '</div>'+
+    '<div class="control-row" id="controlRow"></div>'+
+    (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':''));
 }
 
 function renderActionPanel(){
-  const panel=document.getElementById('actionPanel');
+  const bettingCol=document.getElementById('bettingCol');
+  const controlRow=document.getElementById('controlRow');
+  if(!bettingCol || !controlRow) return; // not yet mounted (e.g. mid table-setup)
   const p=G.players[0];
-  panel.classList.remove('betting-live');
+  bettingCol.classList.remove('betting-live');
+  bettingCol.innerHTML=''; controlRow.innerHTML='';
   if(G.phase==='ante'){
     const upNext=G.anteOrder&&G.anteOrder[G.anteIdx];
     if(upNext===0){
-      panel.classList.add('betting-live');
-      panel.innerHTML='<button class="btn btn-gold" style="width:100%" onclick="humanAnte()">ANTE UP '+G.ante+'</button>';
+      bettingCol.classList.add('betting-live');
+      bettingCol.innerHTML='<button class="btn btn-gold" style="width:100%" onclick="humanAnte()">ANTE UP '+G.ante+'</button>';
     } else {
       const nm=(upNext!==undefined&&G.players[upNext])?G.players[upNext].name:'Players';
-      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+nm+' is anteing…</span>';
+      bettingCol.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+nm+' is anteing…</span>';
     }
     return;
   }
   if(G.phase==='throw'){
-    panel.innerHTML=G.chazwaThrowing
+    controlRow.innerHTML=G.chazwaThrowing
       ? '<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Rolling…</span>'
       : '<button class="btn btn-gold" style="width:100%" onclick="throwChazwaForAll()">THROW THE CHAZWA</button>';
+    // Tap either of your own (unrolled) dice as a shortcut for the same button — mirrors the
+    // reroll phase's tap-a-die convention below.
+    if(!G.chazwaThrowing){
+      const youPod=document.getElementById('youPod');
+      const dice=youPod ? youPod.querySelectorAll('.dice-row .die') : [];
+      dice.forEach(el=>{ el.classList.add('selectable'); el.onclick=()=>throwChazwaForAll(); });
+    }
     return;
   }
   if((G.phase==='bet1'||G.phase==='bet2')){
-    panel.classList.add('betting-live');
-    if(G.betOrder[G.betIdx]===0 && !p.folded){ return; } // renderBetActions handles it
-    panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
+    bettingCol.classList.add('betting-live');
+    if(G.betOrder[G.betIdx]===0 && !p.folded){ return; } // renderBetActions handles both columns
+    bettingCol.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
     return;
   }
   if(G.phase==='reroll'){
-    if(G.rerollOrder[G.rerollIdx]===0 && !p.folded){ return; }
-    panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
+    if(G.rerollOrder[G.rerollIdx]===0 && !p.folded){ return; } // renderRerollActions handles it
+    controlRow.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Waiting on other players…</span>';
     return;
   }
   if(G.phase==='hintarothrow'){
     if(G.hintaroThrowing){
-      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Throwing the Hintaro…</span>';
+      controlRow.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">Throwing the Hintaro…</span>';
     } else if(G.players[G.hintaronSeat].isHuman){
-      panel.innerHTML='<button class="btn btn-gold" onclick="throwHintaro()">THROW THE HINTARO</button>';
+      controlRow.innerHTML='<button class="btn btn-gold" style="width:100%" onclick="throwHintaro()">THROW THE HINTARO</button>';
     } else {
-      panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+G.players[G.hintaronSeat].name+' is throwing the Hintaro…</span>';
+      controlRow.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel)">'+G.players[G.hintaronSeat].name+' is throwing the Hintaro…</span>';
       setTimeout(throwHintaro, 700);
     }
     return;
   }
   if(G.phase==='resolve'){
-    panel.innerHTML='<button class="btn btn-cta" onclick="nextRound()">NEXT ROUND</button>';
+    controlRow.innerHTML='<button class="btn btn-cta" style="width:100%" onclick="nextRound()">NEXT ROUND</button>';
     return;
   }
-  panel.innerHTML='';
 }
 
 function renderBetActions(seat){
-  const panel=document.getElementById('actionPanel');
-  panel.classList.add('betting-live');
+  const bettingCol=document.getElementById('bettingCol');
+  const controlRow=document.getElementById('controlRow');
+  if(!bettingCol || !controlRow) return;
+  bettingCol.classList.add('betting-live');
   const p=G.players[seat];
   const callAmt=playerCallAmt(p);
-  let html='';
   if(G.phase==='bet2'){
-    html+='<div class="actions-row">';
-    html+='<button class="btn btn-cta" onclick="humanBet(\'call\')">SEE '+Math.min(callAmt,p.chips)+'</button>';
-    html+='<button class="btn btn-danger" onclick="humanBet(\'fold\')">FOLD</button>';
-    html+='</div>';
-    panel.innerHTML=html;
+    // Call/fold only — no raising, so there's nothing to size and the shared control row stays empty.
+    bettingCol.innerHTML='<div class="actions-row">'+
+      '<button class="btn btn-cta" onclick="humanBet(\'call\')">SEE '+Math.min(callAmt,p.chips)+'</button>'+
+      '<button class="btn btn-danger" onclick="humanBet(\'fold\')">FOLD</button>'+
+    '</div>';
+    controlRow.innerHTML='';
     return;
   }
   const isOpen=callAmt===0;
   const floor=isOpen? G.minBet : G.currentBet+G.minBet;
   const cap=p.bet+p.chips;
   if(wagerAmt<floor || wagerAmt>cap) wagerAmt=Math.min(floor,cap);
-  html+='<div class="wager-block">';
-  html+='  <div class="wager-label">'+(isOpen?'Set Your Bet':'Set Your Raise')+'</div>';
-  html+='  <div class="wager-stepper">';
-  html+='    <button class="step-btn" onclick="adjustWagerAmt(-1)" '+(wagerAmt<=floor?'disabled':'')+'>−</button>';
-  html+='    <div class="wager-amt">'+wagerAmt+'<span class="wager-unit">cr</span></div>';
-  html+='    <button class="step-btn" onclick="adjustWagerAmt(1)" '+(wagerAmt>=cap?'disabled':'')+'>+</button>';
-  html+='  </div>';
-  html+='  <div class="wager-quick">';
-  html+='    <button class="chip-btn" onclick="setWagerAmt('+floor+')">MIN</button>';
-  html+='    <button class="chip-btn" onclick="setWagerAmt('+cap+')">ALL IN</button>';
-  html+='  </div>';
-  html+='</div>';
-  html+='<div class="actions-row">';
+
+  // Bet-set controls temporarily take over the shared control row (in place of the roll controls)
+  // while you're actively sizing a bet or raise — compact single-row layout, not the old stacked block.
+  controlRow.innerHTML=
+    '<span class="wager-tag">'+(isOpen?'SET BET':'SET RAISE')+'</span>'+
+    '<div class="wager-inline">'+
+      '<button class="step-btn" onclick="adjustWagerAmt(-1)" '+(wagerAmt<=floor?'disabled':'')+'>−</button>'+
+      '<div class="wager-amt">'+wagerAmt+'<span class="wager-unit">cr</span></div>'+
+      '<button class="step-btn" onclick="adjustWagerAmt(1)" '+(wagerAmt>=cap?'disabled':'')+'>+</button>'+
+      '<button class="chip-btn" onclick="setWagerAmt('+floor+')">MIN</button>'+
+      '<button class="chip-btn" onclick="setWagerAmt('+cap+')">ALL IN</button>'+
+    '</div>';
+
+  let html='<div class="actions-row">';
   if(isOpen){
     html+='<button class="btn btn-cta" onclick="humanBet(\'check\')">CHECK</button>';
     html+='<button class="btn btn-gold" onclick="humanBet(\'wager\','+wagerAmt+')">BET '+wagerAmt+'</button>';
@@ -1508,10 +1655,11 @@ function renderBetActions(seat){
   }
   html+='<button class="btn btn-danger" onclick="humanBet(\'fold\')">FOLD</button>';
   html+='</div>';
-  panel.innerHTML=html;
+  bettingCol.innerHTML=html;
 }
 function renderRerollActions(seat){
-  const panel=document.getElementById('actionPanel');
+  const panel=document.getElementById('controlRow');
+  if(!panel) return;
   panel.innerHTML='<span style="align-self:center;font-size:.55rem;color:var(--sh-steel);flex-basis:100%;text-align:center;">Tap one of your dice above to reroll it, or keep both.</span>'+
     '<button class="btn btn-cta" onclick="humanReroll(-1)">KEEP BOTH</button>';
   // make dice in youPod clickable
