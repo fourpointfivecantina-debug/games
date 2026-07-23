@@ -62,9 +62,9 @@ body::after{
 .center-area{
   clip-path: polygon(
     5px 0, calc(100% - 5px) 0, 100% 5px,
-    100% 25%, calc(100% - 12px) calc(25% + 8px), calc(100% - 12px) calc(75% - 8px), 100% 75%,
+    100% 5%, calc(100% - 12px) calc(5% + 8px), calc(100% - 12px) calc(55% - 8px), 100% 55%,
     100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px),
-    0 75%, 12px calc(75% - 8px), 12px calc(25% + 8px), 0 25%,
+    0 55%, 12px calc(55% - 8px), 12px calc(5% + 8px), 0 5%,
     0 5px
   );
 }
@@ -156,8 +156,11 @@ body::after{
   border:1px solid rgba(201,168,76,.5); border-radius:20px; padding:1px 7px; letter-spacing:.04em;
   animation:chipPop .3s cubic-bezier(.175,.885,.32,1.275);
 }
-.chip-ledger{display:flex; align-items:flex-end; gap:8px; margin-bottom:7px; min-height:34px; overflow-x:auto;}
-.chip-stack{display:flex; flex-direction:row; align-items:flex-end; gap:3px; flex-shrink:0;}
+/* Stack sits above the credit number now (was side-by-side, which let the label eat into the
+   already-narrow chip column) — and the stack itself wraps onto additional rows instead of
+   growing sideways forever, so a large pile stays contained inside its pod. */
+.chip-ledger{display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:7px; min-height:34px;}
+.chip-stack{display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:3px; max-width:100%;}
 .chip-column{
   display:flex; flex-direction:column-reverse; align-items:center; min-height:14px; position:relative;
 }
@@ -1022,12 +1025,14 @@ function throwChazwaForAll(){
 
 function doBetPhase(passNum){
   G.phase='bet'+passNum;
+  // Every phase turns clockwise (leftOf the Hintaron, +1 each step), same direction as ante and
+  // reroll — this used to go the other way (rightOf/-1), which read as counter-clockwise.
   if(passNum===1){
     G.currentBet=0; G.betRaised=false;
-    G.betOrder=seatsFrom(rightOf(G.hintaronSeat,G.total),G.total,-1).filter(s=>G.players[s].active && !G.players[s].folded);
+    G.betOrder=seatsFrom(leftOf(G.hintaronSeat,G.total),G.total,1).filter(s=>G.players[s].active && !G.players[s].folded);
   } else {
     // pass 2: only if hintaron raised; everyone except hintaron must call or fold, in same relative order
-    G.betOrder=seatsFrom(rightOf(G.hintaronSeat,G.total),G.total,-1).filter(s=>s!==G.hintaronSeat && G.players[s].active && !G.players[s].folded);
+    G.betOrder=seatsFrom(leftOf(G.hintaronSeat,G.total),G.total,1).filter(s=>s!==G.hintaronSeat && G.players[s].active && !G.players[s].folded);
   }
   G.betIdx=0;
   advanceBet();
@@ -1190,7 +1195,10 @@ function botRerollDecision(seat){
     logMsg(p.name+' keeps both dice.');
   }
   p.rerolled=true;
-  G.rerollIdx++; render(); setTimeout(advanceReroll,350);
+  G.rerollIdx++; render();
+  // Same spin-and-settle as the initial throw — previously only throwChazwaForAll ever added this.
+  if(bestIdx>=0){ const el=dieElFor(seat,bestIdx); if(el) el.classList.add('rolling'); }
+  setTimeout(advanceReroll,350);
 }
 function humanReroll(dieIdx){
   const p=G.players[0];
@@ -1199,6 +1207,7 @@ function humanReroll(dieIdx){
   p.rerolled=true;
   G.rerollIdx++;
   render();
+  if(dieIdx>=0){ const el=dieElFor(0,dieIdx); if(el) el.classList.add('rolling'); }
   setTimeout(advanceReroll,300);
 }
 
@@ -1362,7 +1371,7 @@ function dieIconMarkup(face, cancelledType){
   return '<svg><use href="#'+face.icon+'"/></svg>';
 }
 /* ---- chip visuals: stacks (columns of 10, direct 1-credit-per-coin), and the flying-coin toss/scoop ---- */
-const COINS_PER_COLUMN=10;
+const COINS_PER_COLUMN=20; // higher than before so a growing stack needs fewer columns before wrapping
 const MAX_STACK_COLUMNS=15; // sanity cap so a runaway total can't blow up the DOM
 function buildChipStackHTML(amount, attrs){
   if(amount<=0) return '<div class="chip-stack"'+attrs+'><div class="chip-column"><div class="chip-coin empty"></div></div></div>';
