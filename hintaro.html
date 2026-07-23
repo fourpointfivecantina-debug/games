@@ -72,12 +72,16 @@ body::after{
    sits inline with its (tiny, muted) label, so the whole readout reads as one HUD line instead of
    four separate little cards. Now lives INSIDE the merged Hintaro panel (see .center-area) as its
    top strip, rather than as its own separate panel — no background/border/radius of its own here,
-   the parent panel already provides that frame. */
+   the parent panel already provides that frame.
+   Height is a hard, fixed 56px (not min-height) — sized for the tallest thing this bar ever has to
+   show, which is the 2-line win/no-win/out-of-credits announcement (title + subtitle), not the
+   1-line Round/Hintaron/Pot/Phase readout. That means the bar never grows or shrinks switching
+   between the two, so nothing above or below it ever jumps. */
 .status-bar{
-  position:relative; min-height:52px;
+  position:relative; height:56px; overflow:hidden;
   display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; justify-content:space-between;
   border-top:2px solid var(--sh-teal); border-bottom:1px solid rgba(159,184,195,.15);
-  box-shadow:inset 0 1px 0 rgba(22,209,225,.06); padding-bottom:8px;
+  box-shadow:inset 0 1px 0 rgba(22,209,225,.06);
 }
 .status-item{display:flex; flex-direction:row; align-items:baseline; gap:5px; transition:opacity .12s ease;}
 .status-item .lbl{font-size:.42rem; letter-spacing:.16em; color:var(--sh-steel); text-transform:uppercase;}
@@ -88,29 +92,28 @@ body::after{
    the overlay never resizes) rather than just letting the overlay visually paper over them. */
 .status-bar.announcing .status-item{visibility:hidden; opacity:0;}
 
-/* Win/no-win/out-of-credits messages superimpose directly over this status bar — same box,
-   same footprint, so nothing above or below it ever shifts. It replaces Round/Hintaron/Pot/Phase
-   until "Next Round" is clicked (startRound() dismisses it), or it can be tapped away early.
-   Same gold radial hologram-glow treatment as the Dejarik winner-banner — glow is part of the
-   house style here, not something to avoid; the earlier flat-panel version was the wrong call. */
+/* Win/no-win/out-of-credits messages superimpose directly over this status bar — same box, same
+   footprint, so nothing above or below it ever shifts. It replaces Round/Hintaron/Pot/Phase until
+   "Next Round" is clicked (startRound() dismisses it), or it can be tapped away early.
+   Solid color fill instead of a glow/hologram treatment — reads as a bold flat alert banner that
+   matches the rest of the flat+glow-ring house style rather than fighting it. Color communicates
+   outcome: gold for a win/split, red (.bad) for no-winner or out-of-credits. */
 .sg-announce{
-  position:absolute; inset:0; z-index:5; box-sizing:border-box; border-radius:9px;
+  position:absolute; inset:0; z-index:5; box-sizing:border-box; border-radius:5px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-  padding:2px 12px; overflow:hidden;
-  background:radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.18) 0%, var(--sh-panelB) 75%);
-  border:1.5px solid var(--sh-gold);
-  box-shadow:0 0 28px rgba(201,168,76,.18), inset 0 1px 0 rgba(201,168,76,.12);
-  opacity:0; pointer-events:none; transform:scale(.95);
-  transition:opacity .2s ease, transform .2s cubic-bezier(.34,1.56,.64,1);
+  padding:4px 12px;
+  background:var(--sh-gold);
+  opacity:0; pointer-events:none;
+  transition:opacity .15s ease;
 }
-.sg-announce.show{opacity:1; pointer-events:auto; transform:scale(1); cursor:pointer;}
+.sg-announce.show{opacity:1; pointer-events:auto; cursor:pointer;}
+.sg-announce.bad{background:var(--sh-alert);}
 .sg-announce-title{
-  font-size:.9rem; font-weight:900; letter-spacing:.12em; color:var(--sh-gold);
-  text-shadow:0 0 18px rgba(201,168,76,.5);
+  font-size:1rem; font-weight:900; letter-spacing:.1em; color:var(--sh-bg);
   max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .sg-announce-sub{
-  font-size:.46rem; letter-spacing:.04em; line-height:1.3; color:var(--sh-steel); margin-top:2px;
+  font-size:.5rem; letter-spacing:.03em; line-height:1.3; color:var(--sh-bg); opacity:.75; margin-top:3px;
   max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
@@ -523,8 +526,9 @@ body::after{
   .wager-block{margin-bottom:5px; gap:4px;}
 
   /* Status bar: shrink the value text and stop long phase names ("Throw the Chazwa") from forcing
-     the row to wrap onto a second line. */
-  .status-bar{gap:4px 10px; padding:7px 9px;}
+     the row to wrap onto a second line. Side padding only — the bar's height is fixed, so no
+     vertical padding here (it would just eat into that fixed budget). */
+  .status-bar{gap:4px 10px; padding:0 9px;}
   .status-item{min-width:0;}
   .status-item .val{font-size:.66rem; max-width:30vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
@@ -913,9 +917,10 @@ function restartGame(){
    bar rather than a separate banner — the bar's box never changes size, so nothing above or below
    it ever jumps. The Round/Hintaron/Pot/Phase values underneath are fully hidden (not just visually
    covered) while it's up. Tapping the overlay (or starting the next round) dismisses it. */
-function showAnnounce(title, sub){
+function showAnnounce(title, sub, type){
   document.getElementById('sgAnnounceTitle').textContent='⬟ '+title+' ⬟';
   document.getElementById('sgAnnounceSub').textContent=sub;
+  document.getElementById('sgAnnounce').classList.toggle('bad', type==='bad');
   document.getElementById('sgAnnounce').classList.add('show');
   document.getElementById('statusBar').classList.add('announcing');
 }
@@ -1295,12 +1300,13 @@ function resolveRound(){
     p.finalRank=rk.rank; p.finalName=rk.name; p.finalT=t; p.finalK=k;
   });
   const contenders=results.filter(r=>r.rank>0);
-  let winnerMsg, subMsg;
+  let winnerMsg, subMsg, annType='win';
   if(contenders.length===0){
     winnerMsg='NO WINNER'; subMsg='Nobody ranked. The pot of '+G.pot+' carries to next round.';
     logMsg('No one ranks this round. Pot carries over.','win');
     G.potCarriesOver=true;
     G.winningRank=0;
+    annType='bad';
   } else {
     const best=Math.min(...contenders.map(r=>r.rank));
     G.winningRank=best;
@@ -1333,7 +1339,7 @@ function resolveRound(){
     }, 550+winners.length*160);
     return;
   }
-  showAnnounce(winnerMsg, subMsg);
+  showAnnounce(winnerMsg, subMsg, annType);
   render();
 }
 function nextRound(){
@@ -1345,7 +1351,7 @@ function nextRound(){
   G.hintaronSeat=ns;
   const human=G.players[0];
   if(human.chips<=0){
-    showAnnounce('OUT OF CREDITS','Start a new game to keep playing.');
+    showAnnounce('OUT OF CREDITS','Start a new game to keep playing.','bad');
     return;
   }
   startRound(false);
