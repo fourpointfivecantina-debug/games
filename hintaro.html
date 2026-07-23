@@ -62,9 +62,9 @@ body::after{
 .center-area{
   clip-path: polygon(
     5px 0, calc(100% - 5px) 0, 100% 5px,
-    100% 5%, calc(100% - 12px) calc(5% + 8px), calc(100% - 12px) calc(55% - 8px), 100% 55%,
+    100% 35%, calc(100% - 12px) calc(35% + 8px), calc(100% - 12px) calc(85% - 8px), 100% 85%,
     100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px),
-    0 55%, 12px calc(55% - 8px), 12px calc(5% + 8px), 0 5%,
+    0 85%, 12px calc(85% - 8px), 12px calc(35% + 8px), 0 35%,
     0 5px
   );
 }
@@ -128,8 +128,9 @@ body::after{
 /* Two centered columns per droid pod: chips on the left, both dice stacked vertically on the
    right (see .dice-row). A real 2-col grid rather than flex-wrap, since both columns should stay
    put and centered regardless of width, not reflow. */
-.pod-body{width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center; justify-items:center;}
+.pod-body{width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; justify-items:center;}
 .pod-body .chip-ledger{margin-bottom:0;}
+.dice-col{display:flex; flex-direction:column; align-items:center; gap:4px;}
 .pod.you{max-width:100%; flex:1 1 100%;}
 .pod.you .pod-rank{text-align:center;}
 /* Active-turn now reads via targeting brackets on all four corners (see .pod-bracket) in addition
@@ -160,7 +161,11 @@ body::after{
    already-narrow chip column) — and the stack itself wraps onto additional rows instead of
    growing sideways forever, so a large pile stays contained inside its pod. */
 .chip-ledger{display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:7px; min-height:34px;}
-.chip-stack{display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:3px; max-width:100%;}
+/* Guaranteed at least as tall as the two stacked Chazwa dice (same clamp() used by .die, times two
+   plus the dice-row gap) — coins are already bottom-anchored inside this box via align-items, so
+   however few (or many) coins there are, the stack's own feet always sit on the same line as the
+   bottom of the dice column next to it. */
+.chip-stack{display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:3px; max-width:100%; min-height:calc(2 * clamp(44px,12vw,56px) + 6px);}
 .chip-column{
   display:flex; flex-direction:column-reverse; align-items:center; min-height:14px; position:relative;
 }
@@ -500,6 +505,7 @@ body::after{
   .chip-coin{width:18px; height:7px; margin-top:-4px;}
   .dice-row{gap:4px;}
   .die{width:clamp(38px,11vw,48px); height:clamp(38px,11vw,48px);}
+  .chip-stack{min-height:calc(2 * clamp(38px,11vw,48px) + 4px);}
 
   /* Opponent pods run three-wide when there are 3 droids — every dimension needs to shrink further
      than the "you" pod so three columns fit a phone width without crowding or wrapping. */
@@ -511,6 +517,7 @@ body::after{
   .bot-row .credit-num{font-size:.42rem;}
   .bot-row .dice-row{gap:3px;}
   .bot-row .die{width:clamp(26px,9vw,36px); height:clamp(26px,9vw,36px); border-radius:6px;}
+  .bot-row .chip-stack{min-height:calc(2 * clamp(26px,9vw,36px) + 3px);}
   .bot-row .pod.hintaron::before{font-size:.34rem; padding:1px 4px; top:-7px; right:5px;}
   .icon-row{margin:4px 0;}
   .wager-block{margin-bottom:5px; gap:4px;}
@@ -1501,6 +1508,7 @@ function renderPodInner(p){
   const noRankNote = showResult ? explainNoRank(p.finalT,p.finalK) : '';
   const rankInfo = showResult ? (p.finalName+' ('+p.finalT+'T/'+p.finalK+'K)'+(noRankNote?' — '+noRankNote:'')) : '';
   const isWinner = showResult && p.finalRank>0 && !p.folded && G.pot===0;
+  const rankBlock = p.folded ? '<div class="pod-rank">FOLDED</div>' : (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':'');
   return '<div class="pod-head"><span class="pod-name">'+p.name+(p.chips<=0?' (out)':'')+'</span>'+
       (p.bet>0?'<span class="pot-chip">+'+p.bet+'</span>':'')+
     '</div>'+
@@ -1509,16 +1517,18 @@ function renderPodInner(p){
         chipStackMarkup(p)+
         '<span class="credit-num">'+p.chips+' cr</span>'+
       '</div>'+
-      '<div class="dice-row">'+p.dice.map((d,idx)=>{
-        const ct=G.cancelTargets&&G.cancelTargets[p.id];
-        const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
-        const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
-        const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
-        const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
-        return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
-      }).join('')+'</div>'+
-    '</div>'+
-    (p.folded?'<div class="pod-rank">FOLDED</div>': (showResult?'<div class="pod-rank'+(isWinner?' win':'')+'">'+rankInfo+'</div>':''));
+      '<div class="dice-col">'+
+        '<div class="dice-row">'+p.dice.map((d,idx)=>{
+          const ct=G.cancelTargets&&G.cancelTargets[p.id];
+          const isSpent = G.phase==='resolve' && ct && ct.dieIdx===idx;
+          const isCombo = isSpent && d && !!COMBO_SPLIT[d.icon];
+          const badge = isSpent ? '<span class="spent-badge"><svg><use href="#ic-'+ct.type+'"/></svg></span>' : '';
+          const cls2 = isSpent ? (' spent'+(isCombo?' combo':'')) : '';
+          return '<div class="die'+cls2+'">'+dieIconMarkup(d, isSpent?ct.type:null)+badge+'</div>';
+        }).join('')+'</div>'+
+        rankBlock+
+      '</div>'+
+    '</div>';
 }
 const POD_BRACKETS='<span class="pod-bracket tl"></span><span class="pod-bracket tr"></span><span class="pod-bracket bl"></span><span class="pod-bracket br"></span>';
 function renderPod(p,isYou){
