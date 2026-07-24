@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v9 Flow</title>
+<title>Rianza Playtest v10 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -189,6 +189,44 @@ button:disabled{opacity:.4;cursor:not-allowed}
   display:none !important;
 }
 
+
+/* Tiles represent physical pieces: never stretch them to fill a container. */
+.hand{
+  display:flex;
+  flex-flow:row wrap;
+  justify-content:flex-start;
+  align-content:flex-start;
+  align-items:flex-start;
+  gap:8px;
+}
+.hand > button{
+  box-sizing:border-box;
+  width:62px !important;
+  min-width:62px !important;
+  max-width:62px !important;
+  height:82px !important;
+  min-height:82px !important;
+  max-height:82px !important;
+  flex:0 0 62px !important;
+  align-self:flex-start;
+}
+.p1-committed-box .claim-area{
+  justify-content:flex-start;
+}
+
+
+@media(max-width:700px){
+  .hand > button{
+    width:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    height:64px !important;
+    min-height:64px !important;
+    max-height:64px !important;
+    flex-basis:48px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -216,6 +254,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
         <div class="truth-title">Truthful claims for this roll</div>
         <div class="truth-options" id="truthOptions">Roll the dice to see the legal tiles.</div>
       </div>
+      <div class="truth-box p1-committed-box">
+        <div class="truth-title">P1 committed tiles</div>
+        <div class="claim-area" id="p1Committed">
+          <span class="sub">No claim committed.</span>
+        </div>
+      </div>
     </div>
 
     <div class="actions">
@@ -239,7 +283,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
   <div class="claim-forward">
     <div class="claim-label">Claimed tiles</div>
-    <div class="claim-area" id="humanClaim"><span class="sub">No claim.</span></div>
+    <div class="claim-area" id="REMOVED-humanClaim"><span class="sub">No claim.</span></div>
   </div>
 
   <div class="claim-label">Tiles in hand</div>
@@ -358,12 +402,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
       (state.activeResponder===0?" active":"");
 
     const hc=state.claims[0];
-    $("humanClaim").innerHTML=hc&&hc.count
+    $("p1Committed").innerHTML=hc&&hc.count
       ? `<div class="claim-wrap ${state.targetPlayer===0?'scrutinized':''}">
            <span class="corner-bracket"></span>
            ${hc.tiles.map(t=>tileHTML(t,!hc.revealed)).join("")}
          </div>`
-      : '<span class="sub">No claim.</span>';
+      : '<span class="sub">No claim committed.</span>';
     let hs=$("humanPanel").querySelector(".player-status");
     if(!hs){hs=document.createElement("div");hs.className="player-status";$("humanPanel").appendChild(hs)}
     hs.className=`player-status ${hd}`;
@@ -387,7 +431,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
     hand.innerHTML="";
     const p=state.players[0];
     if(!p)return;
-    p.hand.forEach(t=>{
+    const committedIds=new Set(
+      state.claims[0]&&state.claims[0].count
+        ? state.claims[0].tiles.map(t=>t.id)
+        : []
+    );
+    p.hand.filter(t=>!committedIds.has(t.id)).forEach(t=>{
       const b=document.createElement("button");
       b.type="button";
       b.textContent=label(t);
