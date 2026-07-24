@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v11 Flow</title>
+<title>Rianza Playtest v12 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -255,6 +255,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
   }
 }
 
+
+/* Event log: newest entries first, older entries below. */
+.log{
+  height:220px;
+  max-height:220px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+
 </style>
 </head>
 <body>
@@ -360,8 +369,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
     const d=document.createElement("div");
     d.textContent=msg;
     if(cls)d.className=cls;
-    logEl.appendChild(d);
-    logEl.scrollTop=logEl.scrollHeight;
+    logEl.prepend(d);
+    logEl.scrollTop=0;
   }
 
   function tileHTML(t,hidden=false){
