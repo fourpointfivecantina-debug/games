@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v7 Flow</title>
+<title>Rianza Playtest v8 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -42,7 +42,7 @@ h1{font-size:22px;letter-spacing:.08em}
 .claim-forward .claim-area{min-height:72px}
 .claim-forward .tile-card{transform:translateY(-6px)}
 .claim-forward.targeted,.human-claim-preview.targeted{position:relative;border:2px solid var(--danger);border-radius:8px;padding:10px 6px 4px}
-.claim-forward.targeted::before,.human-claim-preview.targeted::before{content:"◎ CLAIM UNDER SCRUTINY";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--danger);color:white;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:700;white-space:nowrap}
+.claim-forward.targeted::before,.human-claim-preview.targeted::before{content:"◎ ";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--danger);color:white;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:700;white-space:nowrap}
 .flow-strip{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:7px}
 .flow-chip{border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:10px;color:var(--muted)}
 .flow-chip.target{border-color:var(--danger);color:var(--danger)}
@@ -209,7 +209,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div class="wrap">
 <header>
   <div>
-    <h1>RIANZA PLAYTEST v7 · FLOW</h1>
+    <h1>RIANZA PLAYTEST v8 · FLOW</h1>
     <div class="sub">One human versus three bots · visible clockwise challenge flow</div>
   </div>
   <button id="newGame">New Game</button>
@@ -233,7 +233,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     </div>
 
     <div class="resolution" id="resolution">
-      <h3>Current resolution</h3>
+      <h3>P1 committed tiles</h3>
       <div class="resolution-main" id="resolutionMain">Nothing awaiting resolution.</div>
       <div class="claim-area" id="resolutionTiles"></div>
       <div class="resolution-detail" id="resolutionDetail"></div>
@@ -254,7 +254,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
 <section class="panel human" id="humanPanel">
   <div class="player-head">
-    <div class="player-name">P1 — YOU</div>
+    <div class="player-name">P1 — P1 – YOU</div>
     <div class="tile-count" id="humanCount">0 tiles</div>
   </div>
   <div class="human-layout">
@@ -276,7 +276,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
 <script>
 (() => {
-  const NAMES=["P1 — You","P2 — K-2","P3 — Melshi","P4 — Bix"];
+  const NAMES=["P1 – YOU","P2 – BOT","P3 – BOT","P4 – BOT"];
   const state={
     players:[],deck:[],discard:[],roller:0,round:0,dice:[0,0],claims:[],
     resolveOrder:[],resolveIndex:0,selected:[],phase:"idle",winner:null,
@@ -319,9 +319,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
   }
 
   function setResolution(main,tiles=[],hidden=true,detail=""){
-    $("resolutionMain").textContent=main;
+    
     $("resolutionTiles").innerHTML=tiles.map(t=>tileHTML(t,hidden)).join("");
-    $("resolutionDetail").textContent=detail;
+    
   }
 
   function truthfulOptions(){
