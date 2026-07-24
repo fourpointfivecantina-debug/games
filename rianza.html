@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v8 Flow</title>
+<title>Rianza Playtest v9 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -21,10 +21,7 @@ h1{font-size:22px;letter-spacing:.08em}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
 .bot-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
 .player-panel{min-height:225px}
-.player-panel.active{outline:2px solid var(--accent)}
-.player-panel.target-player,.human.target-player{outline:3px solid var(--danger);box-shadow:0 0 0 3px rgba(216,117,117,.18)}
-.player-panel.responding,.human.responding{outline:3px solid var(--accent);box-shadow:0 0 0 3px rgba(212,182,111,.18)}
-.player-panel.responding{animation:thinkPulse .75s ease-in-out infinite alternate}
+.player-panel.active,.human.active{outline:3px solid var(--accent);box-shadow:0 0 0 3px rgba(212,182,111,.18)}
 @keyframes thinkPulse{from{filter:brightness(1)}to{filter:brightness(1.22)}}
 .player-status{min-height:20px;margin-top:5px;font-size:11px;font-weight:700;text-align:center;color:var(--muted)}
 .player-status.pass{color:var(--muted)}
@@ -35,14 +32,12 @@ h1{font-size:22px;letter-spacing:.08em}
 .tile-count{color:var(--accent);font-weight:700}
 .claim-area{display:flex;gap:8px;align-items:center;min-height:82px;flex-wrap:wrap}
 .claim-label{font-size:12px;color:var(--muted);width:100%}
-.hand-visual{display:flex;align-items:flex-end;gap:4px;min-height:78px;flex-wrap:wrap;padding-top:4px}
-.hand-visual .tile-card{width:42px;height:58px;font-size:11px}
+.hand-visual{display:flex;align-items:flex-end;min-height:62px;padding:4px 0 0 22px;overflow:visible}
+.hand-visual .tile-card{width:42px;height:58px;min-width:42px;font-size:11px;margin-left:-20px}
 .hand-visual .tile-card.back::after{font-size:20px}
 .claim-forward{margin-top:8px;padding-top:10px;border-top:1px dashed var(--line)}
 .claim-forward .claim-area{min-height:72px}
 .claim-forward .tile-card{transform:translateY(-6px)}
-.claim-forward.targeted,.human-claim-preview.targeted{position:relative;border:2px solid var(--danger);border-radius:8px;padding:10px 6px 4px}
-.claim-forward.targeted::before,.human-claim-preview.targeted::before{content:"◎ ";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--danger);color:white;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:700;white-space:nowrap}
 .flow-strip{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:7px}
 .flow-chip{border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:10px;color:var(--muted)}
 .flow-chip.target{border-color:var(--danger);color:var(--danger)}
@@ -68,25 +63,22 @@ h1{font-size:22px;letter-spacing:.08em}
 .truth-title{font-weight:700;color:var(--accent);margin-bottom:8px}
 .truth-options{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .truth-sep{color:var(--muted);font-size:13px}
-.resolution{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:145px}
-.resolution h3{font-size:15px;margin-bottom:8px}
-.resolution-main{font-size:17px;font-weight:700;margin-bottom:8px}
-.resolution-detail{color:var(--muted);font-size:14px;line-height:1.45}
 .log{height:390px;overflow:auto;background:#090d12;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:Menlo,Monaco,monospace;font-size:12px;line-height:1.5}
 .log div{padding:3px 0;border-bottom:1px dotted #222c38}
 .log .major{color:var(--accent);font-weight:700}
 .log .good{color:var(--ok)}
 .log .bad{color:var(--danger)}
 .human{margin-top:0}
-.human-layout{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}
-.hand{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+
+.hand{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;min-height:90px}
 .hand button{
-  min-height:72px;background:#efe6d0;color:#171717;border:3px double #252525;border-radius:7px;
+  width:62px;height:82px;min-width:62px;flex:0 0 62px;
+  background:#efe6d0;color:#171717;border:3px double #252525;border-radius:7px;
   font-weight:700;cursor:pointer;padding:7px
 }
 .hand button.selected{outline:4px solid var(--accent);transform:translateY(-2px)}
 .hand button:disabled{opacity:.5;cursor:not-allowed}
-.human-claim-preview{min-width:160px}
+
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:9px 12px;cursor:pointer}
 button.primary{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
@@ -110,8 +102,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .player-name{font-size:11px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tile-count{font-size:11px;margin-top:2px}
   .claim-label{font-size:9px;line-height:1.1}
-  .hand-visual{gap:1px;min-height:35px;padding-top:2px;flex-wrap:nowrap;overflow:hidden}
-  .hand-visual .tile-card{width:18px;height:32px;min-width:18px;border-radius:4px;border-width:1px}
+  .hand-visual{min-height:35px;padding:2px 0 0 11px;flex-wrap:nowrap;overflow:visible}
+  .hand-visual .tile-card{width:18px;height:32px;min-width:18px;margin-left:-9px;border-radius:4px;border-width:1px}
   .hand-visual .tile-card.back::after{font-size:12px}
   .claim-forward{margin-top:4px;padding-top:4px}
   .claim-forward .claim-area{min-height:38px;gap:2px;flex-wrap:nowrap}
@@ -128,21 +120,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .truth-options{gap:4px;flex-wrap:wrap}
   .truth-options .tile-card{width:38px;height:50px;font-size:10px}
   .truth-sep{font-size:10px}
-  .resolution{min-height:102px;padding:7px}
-  .resolution h3{font-size:12px;margin-bottom:4px}
-  .resolution-main{font-size:13px;margin-bottom:4px}
-  .resolution-detail{font-size:11px;line-height:1.3}
-  .resolution .claim-area{min-height:48px;gap:4px}
-  .resolution .tile-card{width:36px;height:48px;font-size:9px}
   .actions{gap:5px;margin-top:6px}
   .actions button{flex:1 1 30%;min-height:42px;padding:7px 6px;font-size:12px}
   .log{height:175px;padding:7px;font-size:10px;line-height:1.35}
   .log div{padding:2px 0}
   .human{position:sticky;bottom:0;z-index:5;border-color:var(--accent)}
-  .human-layout{grid-template-columns:1fr;gap:5px}
-  .hand{display:flex;gap:3px;overflow-x:auto;padding-bottom:3px}
-  .hand button{flex:0 0 48px;min-height:52px;padding:4px;font-size:10px;border-width:2px}
-  .human-claim-preview{display:block;min-width:0}
+  
+  .hand{display:flex;flex-wrap:wrap;gap:4px;overflow:visible;padding-bottom:3px;min-height:58px}
+  .hand button{width:48px;height:64px;min-width:48px;flex:0 0 48px;padding:4px;font-size:10px;border-width:2px}
+  
   .human .actions button{min-height:44px}
 }
 @media(max-width:390px){
@@ -209,7 +195,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div class="wrap">
 <header>
   <div>
-    <h1>RIANZA PLAYTEST v8 · FLOW</h1>
+    <h1>RIANZA PLAYTEST v9 · FLOW</h1>
     <div class="sub">One human versus three bots · visible clockwise challenge flow</div>
   </div>
   <button id="newGame">New Game</button>
@@ -232,13 +218,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
       </div>
     </div>
 
-    <div class="resolution" id="resolution">
-      <h3>P1 committed tiles</h3>
-      <div class="resolution-main" id="resolutionMain">Nothing awaiting resolution.</div>
-      <div class="claim-area" id="resolutionTiles"></div>
-      <div class="resolution-detail" id="resolutionDetail"></div>
-    </div>
-
     <div class="actions">
       <button class="danger" id="challengeBtn" disabled>Challenge</button>
       <button id="passChallengeBtn" disabled>Pass</button>
@@ -254,19 +233,18 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
 <section class="panel human" id="humanPanel">
   <div class="player-head">
-    <div class="player-name">P1 — P1 – YOU</div>
+    <div class="player-name">P1 – YOU</div>
     <div class="tile-count" id="humanCount">0 tiles</div>
   </div>
-  <div class="human-layout">
-    <div>
-      <div class="claim-label">Your hand</div>
-      <div class="hand" id="hand"></div>
-    </div>
-    <div class="human-claim-preview">
-      <div class="claim-label">Your committed claim</div>
-      <div class="claim-area" id="humanClaim"></div>
-    </div>
+
+  <div class="claim-forward">
+    <div class="claim-label">Claimed tiles</div>
+    <div class="claim-area" id="humanClaim"><span class="sub">No claim.</span></div>
   </div>
+
+  <div class="claim-label">Tiles in hand</div>
+  <div class="hand" id="hand"></div>
+
   <div class="actions">
     <button class="primary" id="submitClaim" disabled>Submit selected claim</button>
     <button id="passClaim" disabled>Make no claim</button>
@@ -319,22 +297,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
   }
 
   function setResolution(main,tiles=[],hidden=true,detail=""){
-    
-    $("resolutionTiles").innerHTML=tiles.map(t=>tileHTML(t,hidden)).join("");
-    
+    // Resolution is communicated through the phase/status text,
+    // the yellow active-player outline, and the corner brackets on the live claim.
   }
 
   function truthfulOptions(){
     const [a,b]=state.dice;
-    if(!a||!b){ $("truthOptions").textContent="Roll the dice to see the legal tiles."; return; }
-    const lo=Math.min(a,b),hi=Math.max(a,b);
-    let html=tileHTML({s:lo,t:hi});
-    if(a!==b){
-      html+=`<span class="truth-sep">OR</span>${tileHTML({s:0,t:a})}${tileHTML({s:0,t:b})}`;
-    }else{
-      html+=`<span class="truth-sep">Only the double tile qualifies.</span>`;
+    if(!a||!b){
+      $("truthOptions").textContent="Roll the dice to see the legal truthful claim.";
+      return;
     }
-    $("truthOptions").textContent=`Truthful claims: S${Math.min(state.dice[0],state.dice[1])}/T${Math.max(state.dice[0],state.dice[1])} as one tile, or S0/T${state.dice[0]} + S0/T${state.dice[1]} as two tiles.`;
+    const lo=Math.min(a,b),hi=Math.max(a,b);
+    if(a===b){
+      $("truthOptions").textContent=`Truthful claim: S${lo}/T${hi} as one tile.`;
+    }else{
+      $("truthOptions").textContent=`Truthful claims: S${lo}/T${hi} as one tile, or S0/T${a} + S0/T${b} as two tiles.`;
+    }
   }
 
   function renderPlayers(){
@@ -348,9 +326,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
       const panel=document.createElement("div");
       const decision=state.decisions[i]||"";
       panel.className="panel player-panel"+
-        (i===state.roller?" active":"")+
-        (i===state.targetPlayer?" target-player":"")+
-        (i===state.activeResponder?" responding":"");
+        (i===state.activeResponder?" active":"");
       panel.innerHTML=`
         <div class="player-head">
           <div class="player-name">${NAMES[i]}</div>
@@ -363,7 +339,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
         <div class="claim-forward${i===state.targetPlayer?" targeted":""}">
           <div class="claim-label">Claimed tiles</div>
           <div class="claim-area">
-            ${c&&c.count?c.tiles.map(t=>tileHTML(t,!c.revealed)).join(""):'<span class="sub">No claim.</span>'}
+            ${c&&c.count
+              ? `<div class="claim-wrap ${state.targetPlayer===i?'scrutinized':''}">
+                   <span class="corner-bracket"></span>
+                   ${c.tiles.map(t=>tileHTML(t,!c.revealed)).join("")}
+                 </div>`
+              : '<span class="sub">No claim.</span>'}
           </div>
         </div>
         <div class="player-status ${decision}">${i===state.activeResponder?"THINKING…":decision?decision.toUpperCase():""}</div>`;
@@ -374,23 +355,19 @@ button:disabled{opacity:.4;cursor:not-allowed}
     const hd=state.decisions[0]||"";
     $("humanCount").textContent=`${hp?hp.hand.length:0} tiles`;
     $("humanPanel").className="panel human"+
-      (state.roller===0?" active":"")+
-      (state.targetPlayer===0?" target-player":"")+
-      (state.activeResponder===0?" responding":"");
+      (state.activeResponder===0?" active":"");
 
     const hc=state.claims[0];
     $("humanClaim").innerHTML=hc&&hc.count
-      ? `<div class="claim-wrap ${state.scrutinyTarget===0?'scrutinized':''}">
+      ? `<div class="claim-wrap ${state.targetPlayer===0?'scrutinized':''}">
            <span class="corner-bracket"></span>
            ${hc.tiles.map(t=>tileHTML(t,!hc.revealed)).join("")}
          </div>`
-      : '<span class="sub">No claim committed.</span>';
-    const preview=$("humanClaim").closest(".human-claim-preview");
-    preview.classList.toggle("targeted",state.targetPlayer===0);
+      : '<span class="sub">No claim.</span>';
     let hs=$("humanPanel").querySelector(".player-status");
     if(!hs){hs=document.createElement("div");hs.className="player-status";$("humanPanel").appendChild(hs)}
     hs.className=`player-status ${hd}`;
-    hs.textContent=state.activeResponder===0?"YOUR DECISION":hd?hd.toUpperCase():"";
+    hs.textContent=state.activeResponder===0?"P1 DECISION":hd?hd.toUpperCase():"";
   }
 
   function renderFlow(){
@@ -640,7 +617,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     const truth=isTrueClaim(claim.tiles);
     setResolution(
       `${NAMES[challengerIndex]} challenged ${NAMES[claim.player]}.`,
-      claim.tiles,
+      [],
       false,
       truth?"The claim is TRUE.":"The claim is a BLUFF."
     );
@@ -678,7 +655,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
       log(detail,"good");
     }
 
-    setResolution("Challenge resolved.",claim.tiles,false,detail);
+    state.claims[claim.player]=null;
+    state.pendingClaim=null;
+    state.targetPlayer=null;
+    setResolution("Challenge resolved.",[],false,detail);
     log(`HAND TOTALS — ${state.players.map((p,i)=>`${NAMES[i]}: ${p.hand.length}`).join(" | ")}`);
     state.resolveIndex++;
     state.activeResponder=null;
@@ -694,7 +674,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
     state.discard.push(...moved);
     const detail=`${NAMES[claim.player]}'s claim is accepted and discarded face down. ${p.hand.length} tile(s) remain.`;
     log(detail,"good");
-    setResolution("Claim accepted without challenge.",claim.tiles,true,detail);
+    state.claims[claim.player]=null;
+    state.pendingClaim=null;
+    state.targetPlayer=null;
+    setResolution("Claim accepted without challenge.",[],true,detail);
     state.resolveIndex++;
     state.activeResponder=null;
     state.pendingSteps=[()=>checkWinOrContinue()];
