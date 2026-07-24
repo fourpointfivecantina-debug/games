@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v6 Flow</title>
+<title>Rianza Playtest v7 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -156,13 +156,60 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .log{height:145px}
 }
 
+
+.claim-wrap{
+  position:relative;
+  display:inline-flex;
+  gap:8px;
+  padding:8px;
+}
+.claim-wrap.scrutinized::before,
+.claim-wrap.scrutinized::after,
+.claim-wrap.scrutinized .corner-bracket::before,
+.claim-wrap.scrutinized .corner-bracket::after{
+  content:"";
+  position:absolute;
+  width:16px;
+  height:16px;
+  pointer-events:none;
+}
+.claim-wrap.scrutinized::before{
+  left:0; top:0;
+  border-left:3px solid #ff4b4b;
+  border-top:3px solid #ff4b4b;
+}
+.claim-wrap.scrutinized::after{
+  right:0; top:0;
+  border-right:3px solid #ff4b4b;
+  border-top:3px solid #ff4b4b;
+}
+.claim-wrap.scrutinized .corner-bracket::before{
+  left:0; bottom:0;
+  border-left:3px solid #ff4b4b;
+  border-bottom:3px solid #ff4b4b;
+}
+.claim-wrap.scrutinized .corner-bracket::after{
+  right:0; bottom:0;
+  border-right:3px solid #ff4b4b;
+  border-bottom:3px solid #ff4b4b;
+}
+.truth-options{
+  display:block;
+  font-size:13px;
+  line-height:1.45;
+}
+.truth-options .tile-card,
+.truth-options .truth-sep{
+  display:none !important;
+}
+
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <div>
-    <h1>RIANZA PLAYTEST v6 · FLOW</h1>
+    <h1>RIANZA PLAYTEST v7 · FLOW</h1>
     <div class="sub">One human versus three bots · visible clockwise challenge flow</div>
   </div>
   <button id="newGame">New Game</button>
@@ -287,7 +334,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     }else{
       html+=`<span class="truth-sep">Only the double tile qualifies.</span>`;
     }
-    $("truthOptions").innerHTML=html;
+    $("truthOptions").textContent=`Truthful claims: S${Math.min(state.dice[0],state.dice[1])}/T${Math.max(state.dice[0],state.dice[1])} as one tile, or S0/T${state.dice[0]} + S0/T${state.dice[1]} as two tiles.`;
   }
 
   function renderPlayers(){
@@ -332,7 +379,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
       (state.activeResponder===0?" responding":"");
 
     const hc=state.claims[0];
-    $("humanClaim").innerHTML=hc&&hc.count?hc.tiles.map(t=>tileHTML(t,!hc.revealed)).join(""):'<span class="sub">No claim committed.</span>';
+    $("humanClaim").innerHTML=hc&&hc.count
+      ? `<div class="claim-wrap ${state.scrutinyTarget===0?'scrutinized':''}">
+           <span class="corner-bracket"></span>
+           ${hc.tiles.map(t=>tileHTML(t,!hc.revealed)).join("")}
+         </div>`
+      : '<span class="sub">No claim committed.</span>';
     const preview=$("humanClaim").closest(".human-claim-preview");
     preview.classList.toggle("targeted",state.targetPlayer===0);
     let hs=$("humanPanel").querySelector(".player-status");
