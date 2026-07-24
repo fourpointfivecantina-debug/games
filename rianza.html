@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v10 Flow</title>
+<title>Rianza Playtest v11 Flow</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -224,6 +224,34 @@ button:disabled{opacity:.4;cursor:not-allowed}
     min-height:64px !important;
     max-height:64px !important;
     flex-basis:48px !important;
+  }
+}
+
+
+/* Newest log entry stays at the top; older entries scroll downward. */
+.log{
+  height:220px;
+  max-height:220px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scrollbar-gutter:stable;
+}
+.log > div{
+  flex:none;
+}
+
+
+@media(max-width:700px){
+  .log{
+    height:170px;
+    max-height:170px;
+    overflow-y:auto;
+  }
+}
+@media(max-width:390px){
+  .log{
+    height:145px;
+    max-height:145px;
   }
 }
 
