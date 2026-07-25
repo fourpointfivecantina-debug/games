@@ -358,7 +358,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 (() => {
   const NAMES=["P1 – YOU","P2 – BOT","P3 – BOT","P4 – BOT"];
   const state={
-    players:[],deck:[],discard:[],roller:0,round:0,dice:[0,0],claims:[],
+    players:[],deck:[],discard:[],roller:0,round:0,dice:[0,0],claims:[],claimedThisRound:[],
     resolveOrder:[],resolveIndex:0,selected:[],phase:"idle",winner:null,
     pendingClaim:null,pendingSteps:[],pendingStepIndex:0,targetPlayer:null,activeResponder:null,responderOrder:[],responderIndex:0,decisions:{}
   };
@@ -602,6 +602,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     state.players=NAMES.map(name=>({name,hand:[]}));
     for(let r=0;r<5;r++)for(let p=0;p<4;p++)state.players[p].hand.push(state.deck.pop());
     state.claims=new Array(4).fill(null);
+    state.claimedThisRound=new Array(4).fill(false);
     state.selected=[];
     logEl.innerHTML="";
     log("NEW GAME — 28 tiles shuffled; five dealt to each player.","major");
@@ -612,6 +613,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     state.round++;
     state.dice=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];
     state.claims=new Array(4).fill(null);
+    state.claimedThisRound=new Array(4).fill(false);
     state.selected=[];
     state.resolveIndex=0;
     state.pendingClaim=null;
@@ -628,11 +630,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
     if(state.phase!=="humanClaim")return;
     const tiles=pass?[]:state.players[0].hand.filter(t=>state.selected.includes(t.id));
     state.claims[0]={player:0,tiles:[...tiles],count:tiles.length,revealed:false};
+    state.claimedThisRound[0]=tiles.length>0;
     log(pass?"P1 makes no claim.":`P1 commits ${tiles.length} face-down tile(s).`);
 
     for(let i=1;i<4;i++){
       const ts=chooseBotClaim(i);
       state.claims[i]={player:i,tiles:[...ts],count:ts.length,revealed:false};
+      state.claimedThisRound[i]=ts.length>0;
       log(ts.length?`${NAMES[i]} commits ${ts.length} face-down tile(s).`:`${NAMES[i]} makes no claim.`);
     }
 
@@ -667,13 +671,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
     state.pendingClaim=claim;
     state.targetPlayer=pi;
     state.activeResponder=null;
-    state.responderOrder=orderedFrom(pi,false).filter(i=>state.claims[i]&&state.claims[i].count>0);
+    state.responderOrder=orderedFrom(pi,false).filter(i=>state.claimedThisRound[i]);
     state.responderIndex=0;
     state.decisions={};
     setResolution(`${NAMES[pi]} claims ${claim.count} tile${claim.count===1?"":"s"}.`,claim.tiles,true,"This claim is now under scrutiny.");
     $("phase").textContent=`TARGET: ${NAMES[pi]}'s claim`;
     $("statusline").textContent="Press Continue to begin challenges in the displayed direction.";
-    log(`TARGETING ${NAMES[pi]}'s ${claim.count}-tile claim. Eligible challengers follow ${directionName()}; players with no claim are skipped.`,"major");
+    log(`TARGETING ${NAMES[pi]}'s ${claim.count}-tile claim. Eligible challengers follow ${directionName()}; only players who made no initial claim are skipped.`,"major");
     state.pendingSteps=[advanceResponder];
     state.pendingStepIndex=0;
     state.phase="pause";
