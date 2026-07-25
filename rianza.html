@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rianza Playtest v13 · Alternating Challenge Direction</title>
+<title>Rianza Playtest v14 · Full Match Pot</title>
 <style>
 :root{
   --bg:#0c1016;--panel:#151b24;--panel2:#1c2531;--line:#384657;
@@ -289,10 +289,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div class="wrap">
 <header>
   <div>
-    <h1>RIANZA PLAYTEST v13 · FLOW</h1>
-    <div class="sub">One human versus three bots · alternating challenge direction · no claim, no challenge</div>
+    <h1>RIANZA PLAYTEST v14 · FULL MATCH POT</h1>
+    <div class="sub" id="gameSummary">One human versus three bots · alternating challenge direction · no claim, no challenge · Pot: 0 credits</div>
   </div>
-  <button id="newGame">New Game</button>
+  <button id="newGame" type="button" onclick="window.startRianzaGame()">New Game</button>
 </header>
 
 <section class="bot-row" id="botRow"></section>
@@ -360,7 +360,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
   const state={
     players:[],deck:[],discard:[],roller:0,round:0,dice:[0,0],claims:[],claimedThisRound:[],
     resolveOrder:[],resolveIndex:0,selected:[],phase:"idle",winner:null,
-    pendingClaim:null,pendingSteps:[],pendingStepIndex:0,targetPlayer:null,activeResponder:null,responderOrder:[],responderIndex:0,decisions:{}
+    pendingClaim:null,pendingSteps:[],pendingStepIndex:0,targetPlayer:null,activeResponder:null,responderOrder:[],responderIndex:0,decisions:{},
+    pot:0
   };
 
   const $=id=>document.getElementById(id);
@@ -384,7 +385,30 @@ button:disabled{opacity:.4;cursor:not-allowed}
     return a;
   }
 
-  function label(t){ return `S${t.s}/T${t.t}`; }
+  function printedTileNumber(t){ return t.s+t.t; }
+
+  function label(t){ return `S${t.s}/T${String(printedTileNumber(t)).padStart(2,"0")}`; }
+
+  function containsNumber(t,n){
+    return t.s===n||t.t===n;
+  }
+
+  function isTrueClaimForDice(tiles,a,b){
+    if(tiles.length===1){
+      return containsNumber(tiles[0],a)||containsNumber(tiles[0],b);
+    }
+    if(tiles.length===2){
+      if(a===b)return tiles.every(t=>containsNumber(t,a));
+      return tiles.some(t=>containsNumber(t,a))&&tiles.some(t=>containsNumber(t,b));
+    }
+    return false;
+  }
+
+  function isFullMatchClaim(tiles,a=state.dice[0],b=state.dice[1]){
+    if(tiles.length!==1)return false;
+    const lo=Math.min(a,b),hi=Math.max(a,b);
+    return tiles[0].s===lo&&tiles[0].t===hi;
+  }
 
   function roundDirection(){
     return state.roller%2===0 ? 1 : -1;
@@ -423,14 +447,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
   function truthfulOptions(){
     const [a,b]=state.dice;
     if(!a||!b){
-      $("truthOptions").textContent="Roll the dice to see the legal truthful claim.";
+      $("truthOptions").textContent="Roll the dice to see the legal truthful claims and Full Match.";
       return;
     }
     const lo=Math.min(a,b),hi=Math.max(a,b);
+    const full=`Series ${lo} / Tile ${String(lo+hi).padStart(2,"0")} (${lo}–${hi})`;
     if(a===b){
-      $("truthOptions").textContent=`Truthful claim: S${lo}/T${hi} as one tile.`;
+      $("truthOptions").textContent=`One tile is truthful if it contains ${a}. A two-tile claim is truthful only if both tiles contain ${a}. Full Match: ${full}. Only a challenged truthful one-tile Full Match wins the pot.`;
     }else{
-      $("truthOptions").textContent=`Truthful claims: S${lo}/T${hi} as one tile, or S0/T${a} + S0/T${b} as two tiles.`;
+      $("truthOptions").textContent=`One tile is truthful if it contains ${a} or ${b}. A two-tile claim is truthful when the two tiles collectively cover both numbers. Full Match: ${full}. Only a challenged truthful one-tile Full Match wins the pot.`;
     }
   }
 
@@ -449,7 +474,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
       panel.innerHTML=`
         <div class="player-head">
           <div class="player-name">${NAMES[i]}</div>
-          <div class="tile-count">${p?p.hand.length:0} tiles</div>
+          <div class="tile-count">${p?p.hand.length:0} tiles · ${p?p.credits:0} credits</div>
         </div>
         <div class="claim-label">Tiles in hand</div>
         <div class="hand-visual">
@@ -472,7 +497,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
     const hp=state.players[0];
     const hd=state.decisions[0]||"";
-    $("humanCount").textContent=`${hp?hp.hand.length:0} tiles`;
+    $("humanCount").textContent=`${hp?hp.hand.length:0} tiles · ${hp?hp.credits:0} credits`;
     $("humanPanel").className="panel human"+
       (state.activeResponder===0?" active":"");
 
@@ -535,8 +560,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
     renderHand();
     $("dieA").textContent=state.dice[0]||"–";
     $("dieB").textContent=state.dice[1]||"–";
+    $("gameSummary").textContent=`One human versus three bots · alternating challenge direction · no claim, no challenge · Pot: ${state.pot} credit${state.pot===1?"":"s"}`;
     truthfulOptions();
-    $("directionIndicator").textContent=`${NAMES[state.roller]} roll · ${directionName()} · claimants only may challenge`;
+    $("directionIndicator").textContent=`${NAMES[state.roller]} roll · ${directionName()} · claimants only may challenge · POT ${state.pot}`;
 
     $("submitClaim").disabled=!(state.phase==="humanClaim"&&state.selected.length>=1&&state.selected.length<=2);
     $("passClaim").disabled=state.phase!=="humanClaim";
@@ -546,15 +572,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   }
 
   function isTrueClaim(tiles){
-    const [a,b]=state.dice;
-    const lo=Math.min(a,b),hi=Math.max(a,b);
-    if(tiles.length===1){
-      return tiles[0].s===lo&&tiles[0].t===hi;
-    }
-    if(tiles.length===2&&a!==b){
-      return tiles.some(t=>t.s===0&&t.t===a)&&tiles.some(t=>t.s===0&&t.t===b);
-    }
-    return false;
+    return isTrueClaimForDice(tiles,state.dice[0],state.dice[1]);
   }
 
   function removeTiles(player,ids){
@@ -570,13 +588,30 @@ button:disabled{opacity:.4;cursor:not-allowed}
     const p=state.players[i];
     const [a,b]=state.dice;
     const lo=Math.min(a,b),hi=Math.max(a,b);
-    const direct=p.hand.find(t=>t.s===lo&&t.t===hi);
-    if(direct)return [direct];
-    if(a!==b){
-      const x=p.hand.find(t=>t.s===0&&t.t===a);
-      const y=p.hand.find(t=>t.s===0&&t.t===b);
-      if(x&&y)return [x,y];
+    const fullMatch=p.hand.find(t=>t.s===lo&&t.t===hi);
+    if(fullMatch)return [fullMatch];
+
+    const truthfulSingles=p.hand.filter(t=>isTrueClaimForDice([t],a,b));
+    const truthfulPairs=[];
+    for(let x=0;x<p.hand.length;x++){
+      for(let y=x+1;y<p.hand.length;y++){
+        const pair=[p.hand[x],p.hand[y]];
+        if(isTrueClaimForDice(pair,a,b))truthfulPairs.push(pair);
+      }
     }
+
+    if(truthfulSingles.length&&truthfulPairs.length){
+      return Math.random()<.62
+        ? [truthfulSingles[Math.floor(Math.random()*truthfulSingles.length)]]
+        : truthfulPairs[Math.floor(Math.random()*truthfulPairs.length)];
+    }
+    if(truthfulSingles.length){
+      return [truthfulSingles[Math.floor(Math.random()*truthfulSingles.length)]];
+    }
+    if(truthfulPairs.length){
+      return truthfulPairs[Math.floor(Math.random()*truthfulPairs.length)];
+    }
+
     const bluffChance=p.hand.length<=2?.7:p.hand.length<=4?.45:.28;
     if(p.hand.length&&Math.random()<bluffChance){
       const n=p.hand.length>=2&&Math.random()<.35?2:1;
@@ -593,19 +628,46 @@ button:disabled{opacity:.4;cursor:not-allowed}
     return Math.random()<chance;
   }
 
+  function antePlayers(prefix){
+    const anted=[];
+    state.players.forEach((p,i)=>{
+      if(p.credits>0){
+        p.credits--;
+        state.pot++;
+        anted.push(NAMES[i]);
+      }
+    });
+    const who=anted.length?anted.join(", "):"No players";
+    log(`${prefix} — ${who} ${anted.length===1?"antes":"ante"} 1 credit. Pot: ${state.pot}.`,"major");
+    return anted;
+  }
+
+  function awardFullMatchPot(playerIndex){
+    const won=state.pot;
+    state.players[playerIndex].credits+=won;
+    state.pot=0;
+    log(`FULL MATCH POT WIN — ${NAMES[playerIndex]} scoops ${won} credit${won===1?"":"s"}!`,"major");
+    const anted=antePlayers("RE-ANTE");
+    return {won,anted};
+  }
+
   function startGame(){
     state.deck=shuffle(makeDeck());
     state.discard=[];
     state.roller=0;
     state.round=0;
     state.winner=null;
-    state.players=NAMES.map(name=>({name,hand:[]}));
+    state.pot=0;
+    state.players=NAMES.map(name=>({name,hand:[],credits:20}));
     for(let r=0;r<5;r++)for(let p=0;p<4;p++)state.players[p].hand.push(state.deck.pop());
     state.claims=new Array(4).fill(null);
     state.claimedThisRound=new Array(4).fill(false);
     state.selected=[];
     logEl.innerHTML="";
-    log("NEW GAME — 28 tiles shuffled; five dealt to each player.","major");
+    log("NEW GAME — 28 tiles shuffled; five dealt to each player. Every player starts with 20 credits.","major");
+    log("TARGET RULES — Series is the lower endpoint and the printed Tile number is the endpoint sum. One tile may contain either rolled number; two tiles must cover both. On doubles, both tiles in a two-tile claim must contain the rolled number.");
+    log("POT RULE — Only a challenged truthful one-tile Full Match scoops the pot. Unchallenged Full Matches and every other claim or challenge outcome leave the pot in place.");
+    antePlayers("OPENING ANTE");
     startRound();
   }
 
@@ -744,15 +806,21 @@ button:disabled{opacity:.4;cursor:not-allowed}
   function revealAndResolve(claim,challengerIndex){
     claim.revealed=true;
     const truth=isTrueClaim(claim.tiles);
+    const fullMatchWin=truth&&isFullMatchClaim(claim.tiles);
+    let potResult=null;
+    if(fullMatchWin)potResult=awardFullMatchPot(claim.player);
     setResolution(
       `${NAMES[challengerIndex]} challenged ${NAMES[claim.player]}.`,
       [],
       false,
       truth?"The claim is TRUE.":"The claim is a BLUFF."
     );
-    log(`REVEAL: ${claim.tiles.map(label).join(" + ")} — ${truth?"TRUE":"BLUFF"}.`,truth?"good":"bad");
+    log(`REVEAL: ${claim.tiles.map(label).join(" + ")} — ${truth?"TRUE":"BLUFF"}${fullMatchWin?" · FULL MATCH":""}.`,truth?"good":"bad");
+    if(fullMatchWin){
+      $("statusline").textContent=`Truthful Full Match challenged: ${NAMES[claim.player]} won ${potResult.won} credit${potResult.won===1?"":"s"}; all solvent players re-anted.`;
+    }
 
-    state.pendingSteps=[()=>applyChallengeResult(claim,challengerIndex,truth)];
+    state.pendingSteps=[()=>applyChallengeResult(claim,challengerIndex,truth,fullMatchWin,potResult)];
     state.pendingStepIndex=0;
     state.phase="pause";
     updateUI();
@@ -767,7 +835,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     return moved;
   }
 
-  function applyChallengeResult(claim,challengerIndex,truth){
+  function applyChallengeResult(claim,challengerIndex,truth,fullMatchWin=false,potResult=null){
     const claimant=state.players[claim.player];
     const challenger=state.players[challengerIndex];
     let detail="";
@@ -787,8 +855,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
     state.claims[claim.player]=null;
     state.pendingClaim=null;
     state.targetPlayer=null;
+    if(fullMatchWin){
+      detail+=` ${NAMES[claim.player]} also won the ${potResult.won}-credit Full Match pot; the new pot is ${state.pot}.`;
+    }
     setResolution("Challenge resolved.",[],false,detail);
-    log(`HAND TOTALS — ${state.players.map((p,i)=>`${NAMES[i]}: ${p.hand.length}`).join(" | ")}`);
+    log(`HAND TOTALS — ${state.players.map((p,i)=>`${NAMES[i]}: ${p.hand.length} tiles, ${p.credits} credits`).join(" | ")} · POT: ${state.pot}`);
     state.resolveIndex++;
     state.activeResponder=null;
     state.pendingSteps=[()=>checkWinOrContinue()];
@@ -801,7 +872,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
     const p=state.players[claim.player];
     const moved=removeTiles(p,claim.tiles.map(t=>t.id));
     state.discard.push(...moved);
-    const detail=`${NAMES[claim.player]}'s claim is accepted and discarded face down. ${p.hand.length} tile(s) remain.`;
+    const fullMatch=isFullMatchClaim(claim.tiles);
+    const detail=`${NAMES[claim.player]}'s claim is accepted and discarded face down. ${p.hand.length} tile(s) remain.${fullMatch?" Unchallenged Full Match: no pot award.":""}`;
     log(detail,"good");
     state.claims[claim.player]=null;
     state.pendingClaim=null;
@@ -853,7 +925,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     updateUI();
   }
 
-  $("newGame").addEventListener("click",startGame);
+  window.startRianzaGame=startGame;
   $("submitClaim").addEventListener("click",()=>humanSubmit(false));
   $("passClaim").addEventListener("click",()=>humanSubmit(true));
   $("challengeBtn").addEventListener("click",()=>humanChallenge(true));
