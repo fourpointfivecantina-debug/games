@@ -162,8 +162,6 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .hd-bracket.bl{bottom:-6px;left:-6px;border-right:none;border-top:none;}
 .hd-bracket.br{bottom:-6px;right:-6px;border-left:none;border-top:none;}
 @keyframes blink{0%,100%{border-color:var(--sh-gold);opacity:1;}50%{border-color:var(--sh-teal);opacity:.5;}}
-.direction{font-size:.46rem;letter-spacing:.14em;color:var(--sh-teal);text-transform:uppercase;
-  border:1px solid rgba(20,84,95,.9);border-radius:3px;padding:3px 7px;margin-top:2px;white-space:nowrap;}
 
 .legal-rows{display:flex;flex-direction:column;gap:2px;width:100%;}
 .legal-row{display:flex;align-items:center;gap:5px;padding:2px 5px;border-radius:5px;transition:.3s;}
@@ -173,18 +171,6 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .legal-row.match .nm,.legal-row.match .rk{color:var(--sh-gold);}
 .legal-row.dim{opacity:.4;}
 @keyframes glow{0%,100%{box-shadow:0 0 10px rgba(201,168,76,.25);}50%{box-shadow:0 0 18px rgba(201,168,76,.5);}}
-
-/* ---------- flow strip : challenge order ----------------------------------- */
-.flow-strip{display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:wrap;
-  border-top:1px solid rgba(159,184,195,.12);padding-top:8px;}
-.flow-chip{font-size:.42rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;
-  border:1px solid rgba(159,184,195,.25);color:var(--sh-steel);border-radius:3px;white-space:nowrap;}
-.flow-chip.roller{border-color:var(--sh-gold);color:var(--sh-gold);}
-.flow-chip.active{border-color:var(--sh-teal);color:var(--sh-tealHi);background:rgba(22,209,225,.10);
-  box-shadow:0 0 12px rgba(22,209,225,.25);}
-.flow-chip.pass{opacity:.45;}
-.flow-chip.challenge{border-color:var(--sh-alert);color:var(--sh-alert);background:rgba(255,77,77,.10);}
-.flow-arrow{color:var(--sh-steel);opacity:.5;font-size:.5rem;}
 
 /* ---------- pods ------------------------------------------------------------ */
 .bot-row{display:grid;grid-template-columns:repeat(var(--bot-count,3),1fr);gap:8px;}
@@ -254,6 +240,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .hand .rz-tile:hover{transform:translateY(-6px);filter:brightness(1.25);}
 .hand .rz-tile.sel{transform:translateY(-9px);--rz-edge:#c9a84c;--rz-tally:#c9a84c;
   filter:drop-shadow(0 0 6px rgba(201,168,76,.6));}
+.hand .rz-tile.committed{opacity:.4;filter:grayscale(70%);cursor:default;}
+.hand .rz-tile.committed:hover{transform:none;filter:grayscale(70%);}
 
 /* ---------- chrome ---------------------------------------------------------- */
 .icon-row{display:flex;gap:8px;justify-content:center;margin:4px 0 10px;flex-wrap:wrap;}
@@ -420,7 +408,6 @@ body.dice-aur .die-sym{display:none;}
 .fold-note{flex-basis:100%;text-align:center;font-size:.42rem;line-height:1.5;
   color:var(--sh-steel);opacity:.8;margin-top:2px;}
 .fold-note b{color:var(--sh-alert);}
-.flow-chip.out{opacity:.35;text-decoration:line-through;}
 body:not(.wagering) [data-p="wager"]{display:none;}
 
 /* palettes */
@@ -576,7 +563,6 @@ body.t-mono .rz-tile{--rz-edge:#9fb8c3;--rz-glyph:#e8f4f6;--rz-frame:#3d4c53;
             <span class="hd-bracket tl"></span><span class="hd-bracket tr"></span>
             <span class="hd-bracket bl"></span><span class="hd-bracket br"></span>
           </div>
-          <span class="direction" id="dirLabel">You roll · clockwise →</span>
           <div class="dead-stack">
             <span class="lbl">Boneyard</span>
             <div class="dead-pile" id="deadPileArea">
@@ -601,11 +587,9 @@ body.t-mono .rz-tile{--rz-edge:#9fb8c3;--rz-glyph:#e8f4f6;--rz-frame:#3d4c53;
           </div>
         </div>
       </div>
-
-      <div class="flow-strip" id="flow"></div>
     </div>
 
-    <div class="pod you roller" id="youPod" data-seat="0">
+    <div class="pod you" id="youPod" data-seat="0">
       <span class="pod-bracket tl"></span><span class="pod-bracket tr"></span>
       <span class="pod-bracket bl"></span><span class="pod-bracket br"></span>
       <div class="pod-head"><span class="pod-name">YOU</span>
@@ -787,7 +771,7 @@ const DIFFICULTY = { easy: 0.28, med: 0.14, hard: 0.05 };
 // The estimator is anchored here so its evidence term can be a pure deviation.
 const BLUFF_PRIOR = 0.33;
 
-const HAND_SIZE = 5;                                 // §1
+const HAND_SIZE = 7;                                 // §1
 const TILE_TOTAL = 28;
 
 function fullDeck() {
@@ -877,12 +861,17 @@ class Rianza {
     this.winner = null;
     this.round = 1;
     this.phase = 'roll';
-    this.say(`Deal — ${HAND_SIZE} tiles each. ${this.dead.length} tiles held face-down in the dead pile, out of play for the round.`, 'hi');
+    this.say(`Deal — ${HAND_SIZE} tiles each.` + (this.dead.length
+      ? ` ${this.dead.length} tiles held face-down in the dead pile, out of play for the round.`
+      : ` Every tile is in play — no dead pile this game.`), 'hi');
     return this;
   }
 
-  // §5 direction alternates on roller parity
-  direction() { return this.roller % 2 === 0 ? 1 : -1; }
+  // §5 always clockwise from the roller's left — no alternation. (Matches the
+  // "always clockwise" convention used across other Fourpointfive Cantina games;
+  // the alternating-by-roller-parity version tested as statistically inert and
+  // was pure UX cost, especially rendering the direction clearly on screen.)
+  direction() { return 1; }
 
   orderFrom(start, { includeStart = true } = {}) {
     const dir = this.orderDir ?? this.direction();
@@ -957,19 +946,21 @@ class Rianza {
   claimants() { return this.players.filter(p => p.claim && !p.folded); }
 
   // ------------------------------------------------------------- §7a wager
-  // Ported from Hintaro's doBetPhase/advanceBet: exactly one open betting pass (the roller
-  // acts last, same as Hintaro's hintaron), and if anyone raises during it, exactly one
-  // follow-up pass — everyone but the roller, call-or-fold only, no re-raising — then
-  // wagering is over. No third pass, no re-opening.
+  // Pass 1: one fixed circuit (roller acts last). On each player's single turn
+  // they may check/call, bet/raise, or fold — so ANY player may raise, but each
+  // player is naturally capped at one raise apiece, simply because pass 1 only
+  // ever gives them one turn. Once pass 1's circuit is exhausted, if the final
+  // bet is higher than what someone still in has contributed, pass 2 opens:
+  // one more circuit, call-or-fold only (no raising, by anyone), for exactly
+  // those players who still owe the difference. Done once pass 2 closes.
   openWager() {
     this.currentBet = 0;
-    this.betRaised = false;
     this.wagerPass = 1;
     const others = this.orderFrom(this.roller, { includeStart: false }).filter(s => this.players[s].claim);
-    this.betOrder = this.players[this.roller].claim ? [...others, this.roller] : others;
-    this.betIdx = 0;
+    this.wagerOrder = this.players[this.roller].claim ? [...others, this.roller] : others;
+    this.betQueue = this.wagerOrder.slice();
     this.phase = 'wager';
-    return this.betOrder;
+    return this.betQueue.slice();
   }
 
   wagerAct(seat, action, amount = 0) {
@@ -977,36 +968,31 @@ class Rianza {
     if (action === 'fold') {
       p.folded = true; p.claim = null;              // §7a tiles return to hand, no challenge rights
       this.say(`${this.subj(seat)} ${this.verb(seat, 'drop', 'drops')} out — claim withdrawn, no challenge.`);
-      this.betRaised = false;
     } else if (action === 'call') {
       const add = Math.min(this.currentBet - p.bet, p.credits);
       p.credits -= add; p.bet += add; this.pot += add;
       this.say(add > 0
         ? `${this.subj(seat)} ${this.verb(seat, 'match', 'matches')} ${add}.`
         : `${this.subj(seat)} ${this.verb(seat, 'check', 'checks')}.`);
-      this.betRaised = false; // once matched, this raise is settled — only a LATER raise reopens the question
     } else if (action === 'bet' || action === 'raise') {
-      if (this.wagerPass !== 1) throw new Error('no raising once the follow-up pass has opened — one raise per round');
+      if (this.wagerPass !== 1) throw new Error('no raising in the call round — call or fold only');
       const target = Math.max(this.currentBet + 1, amount);
       const add = Math.min(target - p.bet, p.credits);
       p.credits -= add; p.bet += add; this.pot += add;
-      this.betRaised = p.bet > this.currentBet;
-      if (this.betRaised) this.currentBet = p.bet;
+      if (p.bet > this.currentBet) this.currentBet = p.bet;
       this.say(`${this.subj(seat)} ${this.verb(seat, action === 'bet' ? 'bet' : 'raise to', action === 'bet' ? 'bets' : 'raises to')} ${p.bet}.`);
     }
-    this.betIdx++;
+    this.betQueue.shift();
     return this.wagerDone();
   }
 
   wagerDone() {
-    if (this.betIdx < this.betOrder.length) return false;
-    if (this.wagerPass === 1 && this.betRaised) {
-      // exactly one follow-up pass: everyone but the roller, call or fold, no raising
+    if (this.betQueue.length) return false;
+    if (this.wagerPass === 1) {
       this.wagerPass = 2;
-      this.betOrder = this.orderFrom(this.roller, { includeStart: false })
-        .filter(s => this.players[s].claim && !this.players[s].folded);
-      this.betIdx = 0;
-      return this.betOrder.length === 0;   // nobody left to act — wagering is already over
+      this.betQueue = this.wagerOrder.filter(s =>
+        this.players[s].claim && !this.players[s].folded && this.players[s].bet < this.currentBet);
+      return this.betQueue.length === 0;   // nobody owes anything — wagering is already over
     }
     return true;
   }
@@ -1788,7 +1774,7 @@ function introAction(){
     playAnteAnimation(seats, () => {
       introPhase = 'deal';
       annPhase = 'CHOOSE';
-      annText = '5 tiles each.';
+      annText = HAND_SIZE + ' tiles each.';
       render();
     });
   } else if (introPhase === 'deal') {
@@ -1872,9 +1858,9 @@ function playDealAnimation(onDone){
   const finish = () => { if (finished) return; finished = true; onDone(); };
   if (!deadRect || !layer) { finish(); return; }
   const seats = [0, 1, 2, 3];
-  const perSeat = 5;
-  // One player's 5 tiles at a time, with a clear gap before the next player's —
-  // reads as "5 tiles each, in turn" rather than a single blurred stream of 20.
+  const perSeat = HAND_SIZE;
+  // One player's tiles at a time, with a clear gap before the next player's —
+  // reads as "N tiles each, in turn" rather than a single blurred stream.
   const TILE_STAGGER = 100, SEAT_GAP = 250, FLIGHT = 420;
   const perSeatBlock = (perSeat - 1) * TILE_STAGGER + FLIGHT + SEAT_GAP;
   seats.forEach((seat, si) => {
@@ -1963,6 +1949,7 @@ function beginClaimSeat(){
     } else if (game.wagering) {
       showPhaseGate('All claims are in. ' + buildClaimsSummary(), '▶ PROCEED TO WAGER', () => {
         game.openWager();
+        RianzaSFX.play('wager.open');
         markOutOfRoundBots();
         render();
         beginWagerSeat();
@@ -2028,8 +2015,13 @@ function onPassClaim(){
 /* ---------------------------------------------------------------- wager phase */
 /* Mirrors the claim/challenge phase pattern: an await beat, a reveal beat, one
    step function per actor type (bot vs human), and a shared "what happens after
-   this action" gate. betOrder/betIdx/wagerPass are all engine state (openWager/
-   wagerAct/wagerDone) — the driver just walks it and renders it. */
+   this action" gate. betQueue/wagerPass are all engine state (openWager/wagerAct/
+   wagerDone) — the driver just walks the queue and renders it. Pass 1 is a fixed
+   circuit (any player may raise, each capped at one raise apiece simply by only
+   getting one turn); pass 2 rebuilds betQueue to just the stragglers who still
+   owe the final bet, call/fold only. The driver doesn't need to track which pass
+   is active for its own bookkeeping — it just always looks at whoever's at the
+   front of the queue right now. */
 
 let wagerAmt = 1; // human's current raise/bet target TOTAL (matches wagerAct's `amount` semantics)
 
@@ -2049,8 +2041,8 @@ function adjustWagerAmt(delta){
 }
 
 function beginWagerSeat(){
-  if (!game.betOrder || game.betIdx >= game.betOrder.length) { afterWagerAct(true); return; }
-  const seat = game.betOrder[game.betIdx];
+  if (!game.betQueue || !game.betQueue.length) { afterWagerAct(true); return; }
+  const seat = game.betQueue[0];
   const p = game.players[seat];
   const owe = Math.max(0, game.currentBet - p.bet);
   if (seat === 0) resetWagerAmt();
@@ -2066,16 +2058,15 @@ function beginWagerSeat(){
 
 function stepBotWager(){
   actionSeq++;
-  // Never trust a scheduled callback's view of phase/betIdx/betOrder without
-  // re-checking at fire time — the very last actor's own safety-net timer can still
-  // be pending after wagering has already legitimately handed off to challenges,
-  // and betIdx/betOrder both reset at every pass boundary (unlike claim/challenge
-  // indices, which only ever increase within a phase). Critically: also re-check
-  // that the seat AT this betIdx is actually a bot — a stale timer from an earlier
-  // bot's turn can fire later and find betIdx now legitimately pointing at the
-  // human's own turn, silently deciding for them with no prompt ever shown.
-  if (game.phase !== 'wager' || !game.betOrder || game.betIdx >= game.betOrder.length) return;
-  const seat = game.betOrder[game.betIdx];
+  // Never trust a scheduled callback's view of phase/betQueue without re-checking
+  // at fire time — the very last actor's own safety-net timer can still be
+  // pending after wagering has already legitimately handed off to challenges.
+  // Critically: also re-check that the seat at the front of the queue is
+  // actually a bot — a stale timer from an earlier bot's turn can fire later and
+  // find the queue now legitimately pointing at the human's own turn, silently
+  // deciding for them with no prompt ever shown.
+  if (game.phase !== 'wager' || !game.betQueue || !game.betQueue.length) return;
+  const seat = game.betQueue[0];
   if (game.players[seat].isHuman) return;
   const p = game.players[seat];
   const beforeBet = p.bet;
@@ -2085,6 +2076,9 @@ function stepBotWager(){
   botStatus[seat] = p.folded ? 'OUT'
     : decision.action === 'call' ? ((p.bet - beforeBet) > 0 ? ('CALLED ' + (p.bet - beforeBet)) : 'CHECKED')
     : (decision.action === 'bet' ? 'BET ' : 'RAISED TO ') + p.bet;
+  if (p.folded) RianzaSFX.play('wager.fold');
+  else if (decision.action === 'call') RianzaSFX.play('wager.call');
+  else RianzaSFX.play('wager.betRaise', { amount: p.bet });
   render();
   reveal('WAGER', msgs, () => afterWagerAct(done), true);
 }
@@ -2094,6 +2088,9 @@ function onWagerAct(action, amount){
   if (game.phase !== 'wager') return;
   let done = false;
   const { msgs } = withMessages(() => { done = game.wagerAct(0, action, amount || 0); });
+  if (action === 'fold') RianzaSFX.play('wager.fold');
+  else if (action === 'call') RianzaSFX.play('wager.call');
+  else RianzaSFX.play('wager.betRaise', { amount: game.players[0].bet });
   render();
   reveal('WAGER', msgs, () => afterWagerAct(done), true);
 }
@@ -2374,7 +2371,6 @@ function render(){
   renderPot();
   renderDice();
   renderLegal();
-  renderFlow();
   renderBotPods();
   renderYou();
   renderHandRows();
@@ -2418,6 +2414,7 @@ function renderStatus(){
   const deadCount = introHandsRevealed() ? game.dead.length : TILE_TOTAL;
   $('hudDeadMini').textContent = deadCount;
   $('deadCount').textContent = deadCount;
+  document.querySelectorAll('#deadPileArea .rz-tile').forEach(el => { el.style.display = deadCount > 0 ? '' : 'none'; });
   $('hudYourTiles').textContent = introHandsRevealed() ? game.players[0].hand.length : 0;
   if (game.wagering) $('hudPot').textContent = introAnteRevealed() ? game.pot : 0;
 }
@@ -2431,8 +2428,6 @@ function renderDice(){
   document.getElementById('dieSym1').setAttribute('href', '#rz-die-' + b);
   document.getElementById('dieAur0').setAttribute('href', '#rz-aur-' + a);
   document.getElementById('dieAur1').setAttribute('href', '#rz-aur-' + b);
-  const dir = game.orderDir === -1 ? 'counter-clockwise ←' : 'clockwise →';
-  $('dirLabel').textContent = (game.roller === 0 ? 'You roll' : seatName(game.roller) + ' rolls') + ' · ' + dir;
 }
 
 function renderLegal(){
@@ -2455,23 +2450,6 @@ function renderLegal(){
     '<div class="legal-row"><span class="rk">2</span><span class="nm">' + twoLine + '</span></div>';
 }
 
-function flowClass(seat){
-  if (highlightSeats.target === seat) return 'challenge';
-  if (highlightSeats.active === seat) return 'active';
-  if (!game.players[seat].claim) return 'pass';
-  if (seat === game.roller) return 'roller';
-  return '';
-}
-
-function renderFlow(){
-  const order = game.orderFrom(game.roller);
-  $('flow').innerHTML = order.map((s, i) => {
-    const cls = flowClass(s);
-    return (i ? '<span class="flow-arrow">›</span>' : '') +
-      '<span class="flow-chip ' + cls + '">' + seatName(s) + (cls === 'roller' ? ' · roll' : '') + '</span>';
-  }).join('');
-}
-
 function renderBotPods(){
   for (let seat = 1; seat <= 3; seat++) {
     const p = game.players[seat];
@@ -2482,10 +2460,16 @@ function renderBotPods(){
     const isActingNow = highlightSeats.active === seat;
     podEl.classList.toggle('target', isTarget);
     podEl.classList.toggle('active-turn', isActingNow);
+    podEl.classList.toggle('roller', game.roller === seat);
 
     const handCount = introHandsRevealed() ? p.hand.length : 0;
-    podEl.querySelector('.pod-hand').innerHTML = Array.from({ length: handCount }).map(() => backSVG()).join('');
+    const committedCount = p.claim ? p.claim.count : 0;
+    const visibleBacks = Math.max(0, handCount - committedCount); // committed tiles are drawn in the claim-slot instead — don't draw them twice
+    podEl.querySelector('.pod-hand').innerHTML = Array.from({ length: visibleBacks }).map(() => backSVG()).join('');
     podEl.querySelector('.pod-meta').textContent = handCount + ' tiles';
+
+    const noMoneyPillEl = podEl.querySelector('.pot-chip.noMoney');
+    if (noMoneyPillEl) noMoneyPillEl.textContent = handCount + ' left';
 
     if (game.wagering) {
       const potChipEl = podEl.querySelector('.pot-chip.money');
@@ -2527,10 +2511,14 @@ function renderYou(){
   const isActingNow = highlightSeats.active === 0;
   you.classList.toggle('target', isTarget);
   you.classList.toggle('active-turn', isActingNow);
+  you.classList.toggle('roller', game.roller === 0);
 
   const p = game.players[0];
   const handCountEl = you.querySelector('.hp-col.noMoney .hand-count');
   if (handCountEl) handCountEl.textContent = introHandsRevealed() ? p.hand.length : 0;
+
+  const noMoneyPillEl = you.querySelector('.pot-chip.noMoney');
+  if (noMoneyPillEl) noMoneyPillEl.textContent = (introHandsRevealed() ? p.hand.length : 0) + ' left';
 
   if (game.wagering) {
     const shownCredits = introAnteRevealed() ? p.credits : introPreAnte.credits[0];
@@ -2573,7 +2561,7 @@ function renderYourRead(){
     const claimant = game.players[game.targetSeat];
     rd.innerHTML = claimant.name + ' claims ' + claimant.claim.count + ' tile(s)<br>against ' + game.dice[0] + ' &amp; ' + game.dice[1];
     rd.className = 'your-read';
-  } else if (game.phase === 'wager' && game.betOrder && game.betOrder[game.betIdx] === 0) {
+  } else if (game.phase === 'wager' && game.betQueue && game.betQueue[0] === 0) {
     const you = game.players[0];
     rd.innerHTML = you.claim
       ? ('You claimed ' + you.claim.count + ' tile(s)<br>pot is ' + game.pot + ' credits')
@@ -2652,7 +2640,7 @@ function renderControls(){
     $('btnPassChallenge').onclick = () => onRespond(false);
     return;
   }
-  if (game.phase === 'wager' && game.betOrder && game.betIdx < game.betOrder.length && game.betOrder[game.betIdx] === 0) {
+  if (game.phase === 'wager' && game.betQueue && game.betQueue.length && game.betQueue[0] === 0) {
     const p = game.players[0];
     const owe = Math.max(0, game.currentBet - p.bet);
     const canRaise = game.wagerPass === 1 && (p.bet + p.credits) > game.currentBet;
@@ -2672,7 +2660,7 @@ function renderControls(){
         '<button class="btn btn-ghost" id="btnWagerCall">' + callLabel + '</button>' +
         (canRaise ? '<button class="btn btn-gold" id="btnWagerRaise">' + raiseLabel + '</button>' : '') +
       '</div>' +
-      (game.wagerPass === 2 ? '<span class="fold-note">Follow-up pass — <b>call or fold only</b>, no re-raising.</span>' : '');
+      (game.wagerPass === 2 ? '<span class="fold-note">Call round — <b>call or fold only</b>, no more raising.</span>' : '');
     $('btnWagerFold').onclick = () => onWagerAct('fold');
     $('btnWagerCall').onclick = () => onWagerAct('call');
     if (canRaise) {
@@ -2690,8 +2678,8 @@ function renderControls(){
     label = seatName(game.claimIndex) + ' is deciding…';
     fn = stepBotClaim;
     autoPaced = true;
-  } else if (game.phase === 'wager' && game.betOrder && game.betIdx < game.betOrder.length) {
-    label = seatName(game.betOrder[game.betIdx]) + ' is deciding…';
+  } else if (game.phase === 'wager' && game.betQueue && game.betQueue.length) {
+    label = seatName(game.betQueue[0]) + ' is deciding…';
     fn = stepBotWager;
     autoPaced = true;
   } else if (game.phase === 'challenge') {
@@ -2714,10 +2702,13 @@ function renderHand(){
   const p = game.players[0];
   const canSelect = game.phase === 'claim' && game.claimIndex === 0 && !inReveal;
   const hand = introHandsRevealed() ? p.hand : [];
+  const committedIds = p.claim ? p.claim.tiles.map(t => t.id) : [];
   $('hand').innerHTML = hand.map(t => {
     const sel = selectedTiles.includes(t.id) ? ' sel' : '';
-    return '<svg class="rz-tile' + sel + '" viewBox="0 0 26.0 81.2" data-id="' + t.id + '"' +
-      (canSelect ? ' onclick="toggleTile(\'' + t.id + '\')" style="cursor:pointer;"' : '') +
+    const isCommitted = committedIds.includes(t.id);
+    const committedCls = isCommitted ? ' committed' : '';
+    return '<svg class="rz-tile' + sel + committedCls + '" viewBox="0 0 26.0 81.2" data-id="' + t.id + '"' +
+      (canSelect && !isCommitted ? ' onclick="toggleTile(\'' + t.id + '\')" style="cursor:pointer;"' : '') +
       '><use href="#rz-' + t.id + '"/></svg>';
   }).join('');
 }
