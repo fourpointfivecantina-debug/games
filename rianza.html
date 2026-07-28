@@ -336,9 +336,16 @@ body.wagering .noMoney{display:none !important;}
 #explainNow{color:var(--sh-tealHi);font-weight:600;}
 #explainNext{color:var(--sh-steel);font-style:italic;}
 /* Announcer — the primary "what's happening" line: PHASE + whose turn / what they did.
-   Stays visible (no auto-hide) and toggles a .reveal state once an action resolves. */
-.announcer{display:flex;align-items:baseline;gap:8px;padding:9px 11px;margin-bottom:6px;
-  border:1px solid var(--sh-teal);border-radius:6px;background:rgba(22,209,225,.07);}
+   Stays visible (no auto-hide) and toggles a .reveal state once an action resolves.
+   min-height (not height) is set for a comfortable 2-line baseline — that's the
+   realistic worst case now that the longest messages have been trimmed (96 chars,
+   down from ~118-120). Being a floor rather than a cap, the box still naturally
+   grows taller on the rare message that genuinely needs a 3rd line instead of
+   clipping it — this just stops the common case from reserving that much space
+   for something that will hardly ever happen. */
+.announcer{display:flex;align-items:center;gap:8px;padding:9px 11px;margin-bottom:6px;
+  border:1px solid var(--sh-teal);border-radius:6px;background:rgba(22,209,225,.07);
+  min-height:60px;}
 .announcer-phase{flex:0 0 auto;font-size:.6rem;font-weight:900;letter-spacing:.13em;
   color:var(--sh-gold);text-transform:uppercase;}
 .announcer-body{flex:1;font-size:.62rem;line-height:1.35;color:var(--sh-tealHi);font-weight:700;}
@@ -1042,7 +1049,7 @@ class Rianza {
     const p = this.players[claim.seat];
     this.removeTiles(p, claim.tiles.map(t => t.id)).forEach(t => this.dead.push(t));
     p.claim = null;
-    this.say(`${this.poss(claim.seat)} claim goes unchallenged — ${claim.count} tile(s) shed straight to the dead pile, no risk to anyone. ${this.subj(claim.seat)} now ${this.verb(claim.seat, 'hold', 'holds')} ${p.hand.length}.`, 'good');
+    this.say(`${this.poss(claim.seat)} claim goes unchallenged — ${claim.count} tile(s) shed straight to the dead pile. ${this.subj(claim.seat)} now ${this.verb(claim.seat, 'hold', 'holds')} ${p.hand.length}.`, 'good');
     const res = { outcome: 'unchallenged', shed: claim.count, claimantSeat: claim.seat };
     return this.afterResolve(res, p.id);
   }
@@ -1087,11 +1094,11 @@ class Rianza {
       challenger.hand.push(...exposed);
       const extra = this.transfer(claim.seat, challengerSeat, n);
       res = { outcome: 'true', shed: exposed.length + extra.length, fullMatch: fm, potWon, claimantSeat: claim.seat, challengerSeat };
-      this.say(`TRUE — ${this.subj(claim.seat)} ${this.verb(claim.seat, 'were', 'was')} honest. ${this.subj(challengerSeat)} guessed wrong and ${this.verb(challengerSeat, 'pay', 'pays')} double: ${this.verb(challengerSeat, 'take', 'takes')} ${exposed.length + extra.length} tiles from ${this.obj(claim.seat)}.`, 'good');
+      this.say(`TRUE — ${this.subj(challengerSeat)} guessed wrong and ${this.verb(challengerSeat, 'take', 'takes')} ${exposed.length + extra.length} tiles from ${this.obj(claim.seat)}.`, 'good');
     } else {
       const moved = this.transfer(challengerSeat, claim.seat, n);
       res = { outcome: 'bluff', gained: moved.length, fullMatch: false, potWon, claimantSeat: claim.seat, challengerSeat };
-      this.say(`BLUFF CAUGHT — ${this.subj(claim.seat)} ${this.verb(claim.seat, 'were', 'was')} lying. ${this.subj(claim.seat)} ${this.verb(claim.seat, 'keep', 'keeps')} the claimed tile(s) and ${this.verb(claim.seat, 'take', 'takes')} ${moved.length} more from ${this.obj(challengerSeat)} as the price of being caught.`, 'bad');
+      this.say(`BLUFF CAUGHT — ${this.subj(claim.seat)} ${this.verb(claim.seat, 'keep', 'keeps')} the tile(s) and ${this.verb(claim.seat, 'take', 'takes')} ${moved.length} more from ${this.obj(challengerSeat)}.`, 'bad');
     }
     claimant.claim = null;
     return this.afterResolve(res, claim.seat, challengerSeat);
@@ -2714,12 +2721,14 @@ function renderHand(){
 }
 
 function renderHandRows(){
+  const revealed = introHandsRevealed();
   document.querySelectorAll('.hand-row').forEach(row => {
     const seat = parseInt(row.dataset.bot, 10);
     const p = game.players[seat];
     if (!p) return;
-    row.querySelector('b').textContent = p.hand.length;
-    row.classList.toggle('low', p.hand.length <= 2);
+    const count = revealed ? p.hand.length : 0;
+    row.querySelector('b').textContent = count;
+    row.classList.toggle('low', revealed && count > 0 && count <= 2);
   });
 }
 
@@ -2729,7 +2738,7 @@ function renderExplainer(){
   if (game.phase === 'decio') { nextEl.textContent = 'DECIO ends the round the instant a hand hits zero — mid-resolution counts too.'; return; }
   if (game.phase === 'roll') { nextEl.textContent = 'Every seat gets a chance to claim against the roll, in turn order.'; return; }
   if (game.phase === 'claim') { nextEl.textContent = 'Claiming sheds tiles if unchallenged, but passing forfeits your right to challenge anyone this round.'; return; }
-  if (game.phase === 'wager') { nextEl.textContent = 'One betting pass, roller acts last. Any raise opens exactly one follow-up pass — call or fold only, no third pass. Folding withdraws your claim and your right to challenge.'; return; }
+  if (game.phase === 'wager') { nextEl.textContent = 'Pass 1: any player may raise, once each, roller acts last. Pass 2 (only if needed): call or fold only for whoever still owes the final bet. Folding withdraws your claim and your right to challenge.'; return; }
   if (game.phase === 'challenge') { nextEl.textContent = 'Right call wins tiles from the claimant; wrong call costs double — challenge only when you\u2019re fairly sure it\u2019s a bluff.'; return; }
   nextEl.textContent = '—';
 }
