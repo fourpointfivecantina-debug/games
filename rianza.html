@@ -357,6 +357,30 @@ body.wagering .noMoney{display:none !important;}
 .settings-desc{font-size:.44rem;line-height:1.55;color:var(--sh-steel);
   margin:-3px 0 12px;opacity:.85;}
 .settings-desc:last-of-type{margin-bottom:2px;}
+
+/* Rules panel -- same toggle mechanism as .settings, richer internal typography
+   since it holds the full ruleset rather than a handful of options rows. */
+.rules{display:none;}
+.rules.open{display:block;}
+.rules-body{max-height:400px;overflow-y:auto;padding-right:6px;}
+.rules-body::-webkit-scrollbar{width:5px;}
+.rules-body::-webkit-scrollbar-track{background:transparent;}
+.rules-body::-webkit-scrollbar-thumb{background:rgba(22,209,225,.3);border-radius:3px;}
+.rules-section{margin-bottom:13px;}
+.rules-section:last-child{margin-bottom:2px;}
+.rules-section h4{font-size:.46rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--sh-gold);margin:0 0 5px;}
+.rules-sub{font-size:.42rem;letter-spacing:.1em;text-transform:uppercase;color:var(--sh-tealHi);
+  margin:8px 0 3px;opacity:.85;}
+.rules-list{margin:0 0 6px;padding-left:13px;font-size:.44rem;line-height:1.55;
+  color:var(--sh-steel);}
+.rules-list li{margin-bottom:3px;}
+.rules-list b{color:var(--sh-tealHi);}
+.rules-callout{border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.07);
+  padding:7px 9px;margin:6px 0 10px;font-size:.44rem;line-height:1.5;color:var(--sh-steel);}
+.rules-callout b{color:var(--sh-gold);}
+.rules-attrib{font-size:.4rem;letter-spacing:.06em;color:var(--sh-steel);opacity:.6;
+  text-align:right;margin:10px 0 0;}
 .dev-tools{margin-top:8px;border-top:1px solid rgba(159,184,195,.15);padding-top:8px;}
 .dev-tools summary{font-size:.42rem;letter-spacing:.14em;text-transform:uppercase;
   color:var(--sh-steel);opacity:.55;cursor:pointer;list-style:none;user-select:none;}
@@ -723,9 +747,137 @@ body.t-mono .rz-tile{--rz-edge:#9fb8c3;--rz-glyph:#e8f4f6;--rz-frame:#3d4c53;
   </div>
 
   <div class="icon-row">
-    <button class="icon-btn">☰ RULES</button>
+    <button class="icon-btn" id="btnRules">☰ RULES</button>
     <button class="icon-btn" id="btnSettings">⚙ SETTINGS</button>
     <button class="icon-btn" id="btnNewGame">⟲ NEW GAME</button>
+  </div>
+
+  <div class="panel rules" id="rulesPanel">
+    <h3 class="set-h">Rianza — Rules Reference</h3>
+    <p class="settings-desc">A tile game of trust and betrayal. Be the first to empty your
+      hand and call DECIO. In the wagering game, the winner also takes the Credit Pot.</p>
+    <div class="rules-body">
+      <div class="rules-section">
+        <h4>Setup</h4>
+        <ul class="rules-list">
+          <li>Up to 5 players. Shuffle all 28 tiles.</li>
+          <li>Each player takes an equal number of tiles (5 or more). Leftovers form the
+            face-down <b>Boneyard</b>.</li>
+          <li>Each player starts with 20 credits.</li>
+          <li>Keep your tiles hidden — trust no one.</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>The Tiles</h4>
+        <ul class="rules-list">
+          <li>Each tile shows two numbers, 0–6.</li>
+          <li>A <b>0 is wild</b> and may stand for either rolled number.</li>
+          <li>The <b>0/0</b> tile may stand for both dice at once.</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>Playing a Round</h4>
+        <p class="settings-desc" style="margin:-2px 0 6px">Four steps, then play passes to the
+          next player clockwise.</p>
+        <div class="rules-sub">1. Ante &amp; Roll</div>
+        <ul class="rules-list">
+          <li>Every player with credits antes 1 into the pot.</li>
+          <li>The roller rolls both dice openly — all claims this round are judged against
+            that roll.</li>
+          <li><b>Credit Elimination</b> — if only one player can still ante, that player wins
+            the game and takes the pot.</li>
+        </ul>
+        <div class="rules-sub">2. Make Claims</div>
+        <ul class="rules-list">
+          <li>Each player places one or two tiles face down as a claim — truthfully, as a
+            bluff, or makes no claim at all.</li>
+          <li><b>No Claim, No Challenge</b> — a player who doesn't claim cannot wager or
+            challenge that round.</li>
+          <li>One tile is truthful if it holds either rolled number (a wild 0 stands for
+            either). Two tiles are truthful if together they cover both numbers.</li>
+          <li>On doubles, every tile in the claim must individually cover the matched
+            number.</li>
+        </ul>
+        <div class="rules-callout"><b>Full Match</b> — a single tile that represents both
+          dice at once (roll 3+5 → the 3/5 tile; roll 4+4 → the 4/4 tile; 0/0 is a Full Match
+          for any roll). The strongest possible claim, and the only kind that can win the
+          pot — but only if it's challenged and proves truthful.</div>
+        <div class="rules-sub">3. Wager <span style="opacity:.7">(wagering variant only)</span></div>
+        <ul class="rules-list">
+          <li>Only players with active claims take part, starting left of the roller — the
+            roller always acts last.</li>
+          <li><b>Pass 1:</b> check, bet, raise, or fold.</li>
+          <li><b>Pass 2</b> (only if needed): players who still owe the bet may call or fold
+            only — no further raising.</li>
+          <li>Wagered credits stay in the pot regardless of outcome. Go all-in if you can't
+            cover a bet in full.</li>
+          <li><b>Folding</b> returns your claimed tiles to your hand, forfeits any credits
+            already wagered, and takes you out of challenges this round. If everyone folds,
+            the round ends.</li>
+        </ul>
+        <div class="rules-sub">4. Challenge</div>
+        <ul class="rules-list">
+          <li>Resolved one at a time, starting with the roller and continuing clockwise.
+            Only one player may challenge each claim.</li>
+          <li><b>No challenge:</b> the claimed tiles go face down into the Boneyard.</li>
+          <li><b>Truthful, challenged:</b> the challenger takes the claimed tiles, plus the
+            same number of random tiles from the claimant's hand.</li>
+          <li><b>Bluff, challenged:</b> the claimant keeps the claimed tiles and takes the
+            same number of random tiles from the challenger.</li>
+          <li><b>Truthful Full Match, challenged:</b> resolves as a truthful claim above —
+            but the claimant also takes the entire pot in credits. A win in credits, a loss
+            in tiles, at the same time.</li>
+          <li>If a player can't provide the full number of tiles owed, they give as many as
+            they have left.</li>
+          <li>After a Full Match wins the pot, every player who still has credits antes 1 to
+            start a new pot.</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>DECIO!</h4>
+        <p class="settings-desc" style="margin:-2px 0 0">The moment a player's hand reaches
+          zero tiles, they call "DECIO!" and win immediately — even if other claims from the
+          round haven't been resolved yet. The winner takes the Credit Pot.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Tile-Only Variant (no wagering)</h4>
+        <ul class="rules-list">
+          <li>Skip credits, the pot, ante, and wager steps — go straight from claims to
+            challenges.</li>
+          <li>Players may pass, but cannot fold.</li>
+          <li>Ignore Full Match pot payouts and credit elimination.</li>
+          <li>All claim, challenge, tile-transfer, Boneyard, and DECIO rules stay the
+            same.</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>Quick Reference</h4>
+        <ul class="rules-list">
+          <li><b>Core rule:</b> no claim, no challenge.</li>
+          <li><b>Turn order:</b> claims go clockwise from the roller; wagering starts left of
+            the roller (roller last); challenges start at the roller, then clockwise.</li>
+          <li><b>Challenge results:</b> no challenge → Boneyard. Truthful → challenger takes
+            2× the claimed tiles. Bluff → claimant takes claim-size tiles from the
+            challenger. Full Match → claimant also takes the pot.</li>
+          <li><b>Credit elimination:</b> last player who can still ante wins the game and the
+            pot.</li>
+          <li><b>All-in:</b> can't cover a bet in full? Go all-in with what you have.</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>Tile ID Notation</h4>
+        <p class="settings-desc" style="margin:-2px 0 0">S = Series (lower pip, 0–6, printed
+          at the bottom). T = Tile (upper pip, 1–6, printed at the top). Σ = Pip Sum (S+T),
+          shown as the combined grid — not part of the tile's identity.</p>
+      </div>
+    </div>
+    <p class="rules-attrib">RIANZA · as interpreted by 4.5 Cantina</p>
   </div>
 
   <div class="panel settings" id="settingsPanel">
@@ -2921,6 +3073,12 @@ document.getElementById('aurebeshAll').addEventListener('change', e => {
 
 document.getElementById('btnSettings').addEventListener('click', e => {
   const panel = document.getElementById('settingsPanel');
+  panel.classList.toggle('open');
+  e.currentTarget.classList.toggle('active', panel.classList.contains('open'));
+});
+
+document.getElementById('btnRules').addEventListener('click', e => {
+  const panel = document.getElementById('rulesPanel');
   panel.classList.toggle('open');
   e.currentTarget.classList.toggle('active', panel.classList.contains('open'));
 });
