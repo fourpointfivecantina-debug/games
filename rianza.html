@@ -2,7 +2,46 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1116">
-<title>RIANZA — Table Layout Mockup</title>
+
+<title>Rianza — A Star Wars Cantina Bluffing Dice Game</title>
+<meta name="description" content="Play Rianza free in your browser: a Star Wars cantina bluffing game. Claim tiles that match the roll, bluff past three droid opponents, and call Decio to win.">
+<meta name="author" content="4.5 Cantina">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://fourpointfivecantina-debug.github.io/games/rianza.html">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fourpointfivecantina-debug.github.io/games/rianza.html">
+<meta property="og:site_name" content="4.5 Cantina">
+<meta property="og:title" content="Rianza — A Star Wars Cantina Bluffing Dice Game">
+<meta property="og:description" content="Claim tiles that match the roll, or bluff and hope no one calls it. Guess wrong on a challenge and your hand grows; guess right and theirs does. First to legally empty their hand calls Decio and wins.">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rianza — A Star Wars Cantina Bluffing Dice Game">
+<meta name="twitter:description" content="Play free in your browser: claim, bluff, and call Decio before three droid opponents do.">
+
+<!-- Favicon (inline SVG, no extra asset file needed) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%230b1116'/%3E%3Ctext x='50' y='68' font-family='Georgia,serif' font-size='58' font-weight='700' fill='%2316d1e1' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Rianza",
+  "url": "https://fourpointfivecantina-debug.github.io/games/rianza.html",
+  "description": "Claim tiles that match the roll, or bluff and hope no one calls it. Guess wrong on a challenge and your hand grows; guess right and theirs does. First to legally empty their hand calls Decio and wins.",
+  "genre": "Bluffing dice game",
+  "gamePlatform": "Web browser",
+  "applicationCategory": "Game",
+  "isAccessibleForFree": true,
+  "publisher": {
+    "@type": "Organization",
+    "name": "4.5 Cantina"
+  }
+}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -308,6 +347,12 @@ h1.title{font-size:1.1rem;font-weight:900;letter-spacing:.22em;color:var(--sh-te
 .splash-title{font-size:1.5rem;font-weight:900;letter-spacing:.16em;color:var(--sh-tealHi);
   text-shadow:0 0 26px rgba(22,209,225,.4);margin:0 0 6px;}
 .splash-title-sub{color:var(--sh-gold);}
+.splash-hero{position:relative;display:flex;align-items:center;justify-content:center;
+  gap:12px;height:84px;margin:0 0 16px;}
+.splash-hero-tiles{display:flex;align-items:center;gap:1px;}
+.splash-hero-tiles .rz-tile{width:23px;filter:drop-shadow(0 0 5px rgba(22,209,225,.32));}
+.splash-hero-tiles .rz-tile.rz-flip{transform:rotate(180deg);}
+.splash-hero-die{width:56px;height:56px;font-size:1.3rem;border-radius:8px;}
 .splash-tagline{font-size:.5rem;letter-spacing:.08em;line-height:1.6;color:var(--sh-steel);
   text-transform:uppercase;margin:0 0 14px;}
 .splash-desc{font-size:.56rem;line-height:1.7;color:var(--sh-ink);margin:0 0 22px;text-align:left;}
@@ -554,6 +599,14 @@ body.t-mono .rz-tile{--rz-edge:#9fb8c3;--rz-glyph:#e8f4f6;--rz-frame:#3d4c53;
 
 <div class="splash" id="splashScreen">
   <div class="splash-inner">
+    <div class="splash-hero" aria-hidden="true">
+      <div class="die splash-hero-die"><span class="die-num">4</span><svg class="die-sym" viewBox="0 0 100 100"><use href="#rz-die-4"/></svg><svg class="die-aur" viewBox="0 0 100 100"><use href="#rz-aur-4"/></svg></div>
+      <div class="splash-hero-tiles">
+        <svg class="rz-tile" viewBox="0 0 26.0 81.2"><use href="#rz-S4T5"/></svg>
+        <svg class="rz-tile rz-flip" viewBox="0 0 26.0 81.2"><use href="#rz-S4T5"/></svg>
+      </div>
+      <div class="die splash-hero-die"><span class="die-num">5</span><svg class="die-sym" viewBox="0 0 100 100"><use href="#rz-die-5"/></svg><svg class="die-aur" viewBox="0 0 100 100"><use href="#rz-aur-5"/></svg></div>
+    </div>
     <h1 class="splash-title">RIANZA <span class="splash-title-sub">4.5</span></h1>
     <p class="splash-tagline">A Betting and Bluffing Tile Game — Interpretation by 4.5 Cantina</p>
     <p class="splash-desc">Claim tiles that match the roll, or bluff and hope no one calls it. Guess
@@ -596,8 +649,8 @@ body.t-mono .rz-tile{--rz-edge:#9fb8c3;--rz-glyph:#e8f4f6;--rz-frame:#3d4c53;
 </div>
 
 <div id="gameArea" style="display:none">
-  <h1 class="title">RIANZA</h1><!-- v3.2 — tile-fly ported to Hintaro's chipFly pattern (declarative CSS animation + zero-rect guard) -->
-  <p class="tagline">Table Layout Mockup · Cantina Edition</p>
+  <h2 class="title">RIANZA</h2><!-- v3.2 — tile-fly ported to Hintaro's chipFly pattern (declarative CSS animation + zero-rect guard) -->
+  <p class="tagline">Claim. Bluff. Call Decio. · Cantina Edition</p>
 
   <div class="panel explainer-panel" id="explainerPanel">
     <div class="explain-row"><span class="explain-lbl">Rule reminder</span><span class="explain-txt" id="explainNext">—</span></div>
