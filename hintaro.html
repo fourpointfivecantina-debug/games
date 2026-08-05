@@ -4,10 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1116">
-<title>HINTARO — Cantina Dice</title>
+<title>Hintaro Dice Game — Free Online Star Wars Cantina Dice Game | 4.5 Cantina</title>
+<meta name="description" content="Play Hintaro free online — the Star Wars-inspired cantina dice game from the 4.5 Cantina Edition rulesheet. Roll Chazwa dice, throw the shared Hintaro die, bet, bluff, and win the pot against droid opponents.">
+<meta name="keywords" content="Hintaro, Hintaro dice game, cantina dice game, Star Wars dice game, Edge of the Empire, Chazwa dice, 4.5 Cantina, tabletop dice game, play Hintaro online">
+<meta name="robots" content="index, follow">
+<meta name="author" content="4.5 Cantina">
+<link rel="canonical" href="https://fourpointfivecantina-debug.github.io/games/hintaro.html">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Hintaro — Free Online Star Wars Cantina Dice Game">
+<meta property="og:description" content="Roll Chazwa dice, throw the shared Hintaro die, bet, bluff, and win the pot. Play the 4.5 Cantina Edition of Hintaro free in your browser.">
+<meta property="og:url" content="https://fourpointfivecantina-debug.github.io/games/hintaro.html">
+<meta property="og:site_name" content="4.5 Cantina">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hintaro — Free Online Star Wars Cantina Dice Game">
+<meta name="twitter:description" content="Roll Chazwa dice, throw the shared Hintaro die, bet, bluff, and win the pot. Play the 4.5 Cantina Edition of Hintaro free in your browser.">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Hintaro",
+  "alternateName": "Hintaro — 4.5 Cantina Edition",
+  "description": "A Star Wars-inspired cantina dice and betting game. All players roll two Chazwa dice each, then the shared Hintaro die cancels a Tukar or a Kulro table-wide. Match one of four ranked combos when the dust settles to win the pot.",
+  "genre": ["Dice Game", "Betting Game", "Tabletop Game"],
+  "numberOfPlayers": {
+    "@type": "QuantitativeValue",
+    "minValue": 2,
+    "maxValue": 4
+  },
+  "url": "https://fourpointfivecantina-debug.github.io/games/hintaro.html",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "publisher": {
+    "@type": "Organization",
+    "name": "4.5 Cantina"
+  }
+}
+</script>
 <style>
 :root{
   --sh-bg:#0b1116; --sh-hud:#0f1b23; --sh-ring:#0c2229; --sh-edge:#14545f;
@@ -455,9 +493,38 @@ body::after{
 .start-card{
   width:100%; max-width:420px; background:linear-gradient(135deg, var(--sh-panelA), var(--sh-panelB));
   border:1.5px solid var(--sh-teal); border-radius:6px; padding:22px; box-shadow:0 0 40px rgba(22,209,225,.2);
-  margin:auto;
+  margin:auto; position:relative; overflow:hidden;
+  animation:cardFadeUp .5s ease;
 }
-.start-card h2{
+@keyframes cardFadeUp{ 0%{opacity:0; transform:translateY(10px);} 100%{opacity:1; transform:none;} }
+
+/* Faint dice tumbling in the felt behind the card content — pure atmosphere, never interactive. */
+.start-card-scatter{position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden;}
+.scatter-die{position:absolute; display:block;}
+.scatter-die svg{
+  display:block; width:30px; height:30px; color:var(--sh-teal); opacity:.11;
+  filter:drop-shadow(0 0 6px rgba(22,209,225,.3));
+  animation:scatterBob 7s ease-in-out infinite;
+}
+.scatter-die.gold svg{ color:var(--sh-gold); opacity:.13; filter:drop-shadow(0 0 6px rgba(201,168,76,.35)); }
+@keyframes scatterBob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-7px);} }
+
+.start-card-content{position:relative; z-index:1;}
+
+/* The two dice flanking the title — a small taste of the tumbling-dice motif, sized way down from
+   the in-game dice and animated with a gentle idle wobble rather than a full roll. */
+.splash-title-row{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px;}
+.splash-title-row h1{margin:0;}
+.splash-flank-die{width:clamp(28px,8vw,40px); height:clamp(28px,8vw,40px); flex-shrink:0; cursor:default;
+  animation:splashDieWobble 4.5s ease-in-out infinite;}
+.splash-title-row .splash-flank-die:last-child{animation-delay:.9s;}
+.splash-flank-die.hintaro-die{animation:hintaroBreathe 3s ease-in-out infinite, splashDieWobble 4.5s ease-in-out .9s infinite;}
+@keyframes splashDieWobble{
+  0%,100%{transform:rotate(0deg);}
+  25%{transform:rotate(-9deg);}
+  75%{transform:rotate(9deg);}
+}
+.start-card h1{
   font-size:clamp(1.5rem, 7vw, 2.1rem); font-weight:900; letter-spacing:.18em;
   color:var(--sh-teal); text-shadow:0 0 22px rgba(22,209,225,.28); text-align:center; margin:0 0 4px;
 }
@@ -675,8 +742,14 @@ body::after{
       <button class="tab-btn" data-tab="symbols" onclick="showTab('symbols')">DICE KEY</button>
     </div>
     <div class="tab-content active" id="tab-rules">
-      <h3>The Dice</h3>
-      <p>Each player rolls two <b>Chazwa</b> dice. Faces show <b>Tukar</b>, <b>Kulro</b>, both combined, or blank. One shared <b>Hintaro</b> die shows <b>Hin</b>, <b>Taro</b>, or blank. See the <b>DICE KEY</b> tab for what every face looks like and means.</p>
+      <h3>Overview</h3>
+      <p>All players roll two <b>Chazwa</b> dice each, then the shared <b>Hintaro</b> die cancels a Tukar or a Kulro, table-wide. Match one of four ranked combos when the dust settles to win the pot. See the <b>DICE KEY</b> tab for what every face looks like and means.</p>
+      <h3>Setup</h3>
+      <ul>
+        <li>Each player starts with an equal amount of credits (the standard 4.5 Cantina buy-in is 20 credits: 10 black chips worth 1 each, plus 2 white chips worth 5 each). Start with fewer credits for a quicker game.</li>
+        <li>Give each player 2 Chazwa dice. Keep the single shared Hintaro die within reach of the whole table.</li>
+        <li>Pick a starting Hintaron — the role passes to the left after every round.</li>
+      </ul>
       <h3>Round Flow</h3>
       <ul>
         <li>Everyone antes into the pot.</li>
@@ -686,16 +759,18 @@ body::after{
         <li>The Hintaron throws the Hintaro die: a <b>Hin</b> cancels one Tukar for everyone, a <b>Taro</b> cancels one Kulro.</li>
         <li>Best ranked hand wins the pot. The Hintaron role passes left each round.</li>
       </ul>
+      <h3>Winner Take All</h3>
+      <p>A player who hits zero credits is eliminated. Play continues until one player holds all the credits.</p>
     </div>
     <div class="tab-content" id="tab-scoring">
       <h3>Hintaro Score Ranking</h3>
       <table class="score-table">
-        <tr><td class="rk">1</td><td>Tukar to Kulro <svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></td></tr>
+        <tr><td class="rk">1</td><td>Tukar-Kulro <svg><use href="#ic-tukarkulro"/></svg><svg><use href="#ic-tukarkulro"/></svg></td></tr>
         <tr><td class="rk">2</td><td>Quadro-Kulro <svg><use href="#ic-kulrokulro"/></svg><svg><use href="#ic-kulrokulro"/></svg></td></tr>
         <tr><td class="rk">3</td><td>Tukar-Tukar <svg><use href="#ic-tukar"/></svg><svg><use href="#ic-tukar"/></svg></td></tr>
         <tr><td class="rk">4</td><td>Kulro-Kulro <svg><use href="#ic-kulro"/></svg><svg><use href="#ic-kulro"/></svg></td></tr>
       </table>
-      <p>Any other combination cannot win. Ties split the pot; if nobody ranks, the pot carries to next round.</p>
+      <p>Any other combination cannot win. Ties split the pot; if nobody ranks, the pot carries to the next round.</p>
     </div>
     <div class="tab-content" id="tab-symbols">
       <h3>Your Chazwa Dice (2 rolled per player)</h3>
@@ -739,36 +814,49 @@ body::after{
 
 <div class="start-overlay" id="startOverlay">
   <div class="start-card">
-    <h2>HINTARO</h2>
-    <p class="tagline">A Game of Chance Cubes · Cantina Edition</p>
-    <p class="howto">Roll your Chazwa dice, then the shared Hintaro die cancels one Tukar and one Kulro table-wide. Match one of four ranked combos when the dust settles to win the pot.</p>
-    <p class="st-sub">Set the table before you roll</p>
-    <div class="field">
-      <span class="flabel">Opponents</span>
-      <div class="segmented" id="botCountSeg">
-        <button data-v="1">1 DROID</button>
-        <button data-v="2" class="active">2 DROIDS</button>
-        <button data-v="3">3 DROIDS</button>
-      </div>
+    <div class="start-card-scatter" aria-hidden="true">
+      <span class="scatter-die" style="top:8%; left:5%; transform:rotate(-16deg);"><svg><use href="#ic-tukar"/></svg></span>
+      <span class="scatter-die" style="top:14%; right:6%; transform:rotate(20deg);"><svg style="animation-delay:1.1s"><use href="#ic-kulro"/></svg></span>
+      <span class="scatter-die gold" style="bottom:16%; left:8%; transform:rotate(12deg);"><svg style="animation-delay:.5s"><use href="#ic-taro"/></svg></span>
+      <span class="scatter-die" style="bottom:6%; right:9%; transform:rotate(-22deg);"><svg style="animation-delay:1.7s"><use href="#ic-kulrokulro"/></svg></span>
+      <span class="scatter-die" style="top:48%; left:2%; transform:rotate(28deg); width:24px;"><svg style="width:24px;height:24px;animation-delay:.8s"><use href="#ic-blank"/></svg></span>
     </div>
-    <div class="field">
-      <span class="flabel">Starting Credits</span>
-      <div class="segmented" id="creditSeg">
-        <button data-v="5">5</button>
-        <button data-v="10" class="active">10</button>
-        <button data-v="25">25</button>
+    <div class="start-card-content">
+      <div class="splash-title-row">
+        <div class="die splash-flank-die" aria-hidden="true"><svg><use href="#ic-tukarkulro"/></svg></div>
+        <h1>HINTARO</h1>
+        <div class="die hintaro-die splash-flank-die" aria-hidden="true"><svg><use href="#ic-hin"/></svg></div>
       </div>
-    </div>
-    <div class="field">
-      <span class="flabel">Ante</span>
-      <div class="segmented" id="anteSeg">
-        <button data-v="1">1</button>
-        <button data-v="2" class="active">2</button>
-        <button data-v="5">5</button>
+      <p class="tagline">A Game of Chance Cubes · 4.5 Cantina Edition</p>
+      <p class="howto">Roll your Chazwa dice, then the shared Hintaro die cancels one Tukar and one Kulro table-wide. Match one of four ranked combos when the dust settles to win the pot.</p>
+      <p class="st-sub">Set the table before you roll</p>
+      <div class="field">
+        <span class="flabel">Opponents</span>
+        <div class="segmented" id="botCountSeg">
+          <button data-v="1">1 DROID</button>
+          <button data-v="2" class="active">2 DROIDS</button>
+          <button data-v="3">3 DROIDS</button>
+        </div>
       </div>
+      <div class="field">
+        <span class="flabel">Starting Credits</span>
+        <div class="segmented" id="creditSeg">
+          <button data-v="5">5</button>
+          <button data-v="10" class="active">10</button>
+          <button data-v="25">25</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flabel">Ante</span>
+        <div class="segmented" id="anteSeg">
+          <button data-v="1">1</button>
+          <button data-v="2" class="active">2</button>
+          <button data-v="5">5</button>
+        </div>
+      </div>
+      <button class="btn btn-cta" style="width:100%" onclick="beginGame()">DEAL ME IN</button>
+      <p class="credits">Based on the Hintaro dice game from Star Wars: Edge of the Empire · fan project, not affiliated with Lucasfilm or Disney</p>
     </div>
-    <button class="btn btn-cta" style="width:100%" onclick="beginGame()">DEAL ME IN</button>
-    <p class="credits">Based on the Hintaro dice game from Star Wars: Edge of the Empire · fan project, not affiliated with Lucasfilm or Disney</p>
   </div>
 </div>
 
@@ -830,7 +918,7 @@ function rollHintaroDie(){ return HINTARO_FACES[Math.floor(Math.random()*6)]; }
 
 // Rank a hand given raw tukar/kulro totals (after cancellation). Lower rank number = better. 0 = no rank (can't win).
 function rankHand(t,k){
-  if(t===2 && k===2) return {rank:1,name:'Tukar to Kulro'};
+  if(t===2 && k===2) return {rank:1,name:'Tukar-Kulro'};
   if(k===4) return {rank:2,name:'Quadro-Kulro'};
   if(t===2 && k===0) return {rank:3,name:'Tukar-Tukar'};
   if(k===2 && t===0) return {rank:4,name:'Kulro-Kulro'};
@@ -1302,7 +1390,7 @@ function resolveRound(){
   const contenders=results.filter(r=>r.rank>0);
   let winnerMsg, subMsg, annType='win';
   if(contenders.length===0){
-    winnerMsg='NO WINNER'; subMsg='Nobody ranked. The pot of '+G.pot+' carries to next round.';
+    winnerMsg='NO WINNER'; subMsg='Nobody ranked. The pot of '+G.pot+' carries to the next round.';
     logMsg('No one ranks this round. Pot carries over.','win');
     G.potCarriesOver=true;
     G.winningRank=0;
