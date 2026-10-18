@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coins · Flasks · Sabers — Standalone Widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sh-teal:   #16d1e1;
+    --sh-tealHi: #9ff0ff;
+    --sh-steel:  #9fb8c3;
+    --sh-edge:   #14545f;
+    --sh-gold:   #c9a84c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #050a0d;
+    color: rgba(232,246,248,.85);
+    font-family: ui-monospace, monospace;
+  }
+
+  /* Needed so the hand-gesture <use> icons render as outline line-art and
+     correctly inherit color (fist/open-hand/scissors — see .sh-asset below). */
+  .sh-asset {
+    fill: none;
+    stroke: currentColor;
+    stroke-miterlimit: 10;
+    stroke-width: .5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* ── Demo harness shell (not part of the real game — just lets this
+       widget run and be re-triggered on its own, standalone) ── */
+  /* Anchored to the top (not vertically centered) on purpose: with
+     justify-content:center, every time the log below grows (a new match
+     round), the whole page re-centers and the title/button jump. Starting
+     from the top means new content only ever extends the page downward. */
+  .demo-shell {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 40px 16px 60px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .demo-eyebrow {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: rgba(159,184,195,.5);
+  }
+  /* The header for the whole mini-game — same all-caps convention as the
+     popup's own title, so the opening page and the popup read as one
+     continuous piece rather than two different typographic styles. */
+  .demo-title {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(24px, 7vw, 36px);
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: var(--sh-gold);
+    text-shadow: 0 0 24px rgba(201,168,76,.3);
+    margin: 0;
+  }
+  .demo-desc {
+    max-width: 420px;
+    width: 100%;
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(232,246,248,.6);
+    box-sizing: border-box;
+  }
+  /* Same styling as the main game's primary action button (#btn-step,
+     "Next Step") — teal border, dark gradient, tealHi text — so this reads
+     as the game's own button rather than a demo-harness invention. */
+  .demo-throw-btn {
+    height: 52px;
+    padding: 0 34px;
+    border-radius: 8px;
+    border: 1.5px solid var(--sh-teal);
+    background: linear-gradient(160deg, #0c2229 0%, #061017 100%);
+    color: var(--sh-tealHi);
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 14px rgba(22,209,225,.10), inset 0 1px 0 rgba(22,209,225,.08);
+    transition: border-color .15s, box-shadow .15s, background .15s, transform .15s ease;
+  }
+  .demo-throw-btn:hover:not(:disabled) {
+    border-color: var(--sh-tealHi);
+    box-shadow: 0 0 20px rgba(22,209,225,.22), inset 0 1px 0 rgba(22,209,225,.12);
+    background: linear-gradient(160deg, #0f2e3a 0%, #081c28 100%);
+  }
+  .demo-throw-btn:active:not(:disabled) { transform: translateY(1px); }
+  .demo-throw-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+  /* Best-of format toggle — steel (neutral) by default, teal (the game's
+     "this is active" color) when selected. Disabled mid-match so the
+     format can't change until the series is decided. flex-wrap so three
+     buttons never force horizontal scroll on a narrow phone. */
+  .demo-format-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(159,184,195,.5);
+  }
+  .demo-format-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+  .demo-format-btn {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(159,184,195,.75);
+    background: rgba(22,33,40,.5);
+    border: 1.5px solid rgba(159,184,195,.3);
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-height: 38px; /* closer to a comfortable mobile tap target */
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .demo-format-btn:hover:not(:disabled) { border-color: var(--sh-steel); }
+  .demo-format-btn:disabled { cursor: default; opacity: .5; }
+  .demo-format-btn.active {
+    border-color: var(--sh-teal);
+    background: rgba(22,209,225,.10);
+    color: var(--sh-tealHi);
+  }
+
+  .demo-scoreboard {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: rgba(232,246,248,.7);
+    min-height: 1.4em;
+  }
+  .demo-scoreboard strong { color: var(--sh-gold); }
+
+  /* Round-by-round tracker — only shown for Best of 3 / Best of 5 (a
+     single throw has nothing to track). One pip per round the format can
+     go to; decided rounds fill in with who won, the round in progress gets
+     a gold ring. Sits below the scoreboard so toggling it on/off only
+     pushes the log further down, never the title/button above it. */
+  .demo-round-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .demo-round-tracker:empty { display: none; }
+  .demo-round-label {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(159,184,195,.5);
+    margin-right: 2px;
+  }
+  .demo-round-pip {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(159,184,195,.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(159,184,195,.4);
+    background: rgba(22,33,40,.45);
+    box-sizing: border-box;
+    transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
+  }
+  .demo-round-pip--you {
+    border-color: var(--sh-steel);
+    background: rgba(159,184,195,.16);
+    color: var(--sh-steel);
+  }
+  .demo-round-pip--id10t {
+    border-color: var(--sh-teal);
+    background: rgba(22,209,225,.14);
+    color: var(--sh-tealHi);
+  }
+  .demo-round-pip--current {
+    border-color: var(--sh-gold);
+    box-shadow: 0 0 0 3px rgba(201,168,76,.18);
+  }
+
+  /* Capped height + its own scroll — a long match's log grows inside this
+     box instead of continually stretching (and jumping) the whole page. */
+  .demo-log {
+    margin-top: 6px;
+    font-size: 12px;
+    color: rgba(159,184,195,.55);
+    max-width: 420px;
+    width: 100%;
+    line-height: 1.7;
+    max-height: 150px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding-right: 4px;
+  }
+  .demo-log:empty { display: none; }
+  .demo-log strong { color: rgba(232,246,248,.85); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     Everything below this line is the real widget, copied verbatim from
+     Smuggler's Hold: Skeleton Crew Edition — the full-screen CFS
+     (Coins / Flasks / Sabers) Hold-tiebreaker popup.
+     ════════════════════════════════════════════════════════════════════ */
+
+  @keyframes sh-go-pulse {
+    0%,100% { box-shadow: 0 0 12px rgba(201,168,76,.2); border-color: rgba(201,168,76,.5); }
+    50%      { box-shadow: 0 0 28px rgba(201,168,76,.5); border-color: rgba(201,168,76,.9); }
+  }
+
+  #sh-cfs-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 280;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Anchored from the top, not centered: centering meant every size
+       change below (countdown text growing, the result/continue panel
+       appearing) recomputed the whole block's vertical position, so the
+       title visibly jumped on every beat. Top-anchored, new content below
+       a fixed point only ever extends the popup downward. */
+    justify-content: flex-start;
+    background: rgba(2, 8, 12, 0.97);
+    opacity: 0;
+    transform: translateY(40px);
+    transition: transform 0.45s cubic-bezier(.22,.8,.36,1), opacity 0.4s ease;
+    pointer-events: none;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    padding: clamp(48px, 12vh, 100px) 20px 32px;
+    box-sizing: border-box;
+    text-align: center;
+    /* Scrolls instead of clipping if content is ever taller than a short
+       phone screen in landscape — overflow:hidden would just cut it off. */
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  #sh-cfs-overlay.sh-cfs-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  #sh-cfs-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  #sh-cfs-overlay > * { position: relative; z-index: 1; }
+
+  .sh-cfs-eyeline {
+    font-size: clamp(9px, 2vw, 11px);
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: rgba(159,184,195,.45);
+    margin-bottom: 14px;
+  }
+  .sh-cfs-title {
+    font-size: clamp(18px, 4.5vw, 28px);
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--sh-gold);
+    text-shadow: 0 0 30px rgba(201,168,76,.35);
+    margin-bottom: 10px;
+  }
+  .sh-cfs-title span { color: rgba(159,184,195,.4); margin: 0 .2em; }
+  .sh-cfs-sub {
+    font-family: ui-monospace, monospace;
+    font-size: clamp(11px, 2.6vw, 13px);
+    color: rgba(232,246,248,.68);
+    max-width: 420px;
+    line-height: 1.5;
+    letter-spacing: .01em;
+    margin-bottom: 26px;
+    /* Fixed px, not em: this line swaps between small instructional text
+       and the much bigger countdown numbers below, and an em-based
+       min-height recomputes with the font size, so it couldn't reserve
+       enough room for the bigger state. A flat height both states fit in
+       stops that swap from reflowing anything below it. */
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color .15s ease;
+  }
+  /* The "Three! Two! One! THROW!" countdown text — bigger, bolder, and
+     gold for the payoff beat so it reads as the climax, not more status text. */
+  .sh-cfs-sub--throw {
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(22px, 6vw, 34px);
+    font-weight: 800;
+    letter-spacing: .12em;
+    color: var(--sh-gold);
+    text-shadow: 0 0 24px rgba(201,168,76,.55);
+    animation: sh-cfs-throw-pop .4s cubic-bezier(.2,1.4,.3,1) both;
+  }
+  @keyframes sh-cfs-throw-pop {
+    0%   { transform: scale(.6); opacity: 0; }
+    55%  { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .sh-cfs-picks {
+    display: flex;
+    gap: clamp(10px, 3vw, 20px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  #sh-cfs-picks[hidden], #sh-cfs-reveal[hidden] { display: none; }
+  .sh-cfs-pick {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: rgba(22,33,40,.55);
+    border: 2px solid rgba(159,184,195,.35);
+    border-radius: 12px;
+    padding: 14px 10px 12px;
+    cursor: pointer;
+    color: rgba(232,246,248,.85);
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(9px, 2.2vw, 11px);
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease;
+  }
+  .sh-cfs-pick:hover:not(:disabled),
+  .sh-cfs-pick:focus-visible:not(:disabled) {
+    border-color: var(--sh-gold);
+    background: rgba(201,168,76,.12);
+    transform: translateY(-2px);
+  }
+  .sh-cfs-pick:disabled { opacity: .35; cursor: default; }
+  .sh-cfs-pick .sh-cfs-card-svg { width: clamp(44px, 11vw, 60px); height: auto; }
+
+  .sh-cfs-card-svg { display: block; }
+  .sh-cfs-card-bg { fill: rgba(9,23,30,.9); stroke: rgba(159,184,195,.5); stroke-width: 1.1; }
+  .sh-cfs-card-bg--back { fill: #080e12; stroke: rgba(159,184,195,.35); }
+  .sh-cfs-card-icon { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; color: rgba(232,246,248,.72); }
+
+  .sh-cfs-card--you .sh-cfs-card-bg      { stroke: var(--sh-steel); fill: rgba(159,184,195,.10); }
+  .sh-cfs-card--you .sh-cfs-card-icon    { color: var(--sh-steel); }
+  .sh-cfs-card--id10t .sh-cfs-card-bg    { stroke: var(--sh-teal); fill: rgba(22,209,225,.10); }
+  .sh-cfs-card--id10t .sh-cfs-card-icon  { color: var(--sh-teal); }
+
+  .sh-cfs-card--flip-in {
+    animation: sh-cfs-flip-in .38s cubic-bezier(.2,1.1,.3,1) both;
+  }
+  @keyframes sh-cfs-flip-in {
+    0%   { transform: rotateY(90deg) scale(.82); opacity: 0; }
+    60%  { transform: rotateY(-8deg) scale(1.04); opacity: 1; }
+    100% { transform: rotateY(0) scale(1); opacity: 1; }
+  }
+
+  .sh-cfs-reveal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 5vw, 34px);
+    margin-bottom: 22px;
+  }
+  .sh-cfs-well {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  /* One punch per "pop" beat, retriggered via a reflow in JS so three
+     back-to-back beats each visibly pulse rather than animating once. */
+  .sh-cfs-well--pop .sh-cfs-card-slot {
+    animation: sh-cfs-pop-beat .3s ease-out;
+  }
+  @keyframes sh-cfs-pop-beat {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.14); filter: brightness(1.5); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  .sh-cfs-card-slot { width: clamp(56px, 15vw, 78px); min-height: clamp(88px, 23vw, 122px); display: flex; align-items: center; justify-content: center; }
+  .sh-cfs-card-slot .sh-cfs-card-svg { width: 100%; }
+  .sh-cfs-well-label {
+    font-size: clamp(9px, 2.2vw, 11px);
+    font-weight: 720;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+  }
+  .sh-cfs-well-label--you   { color: var(--sh-steel); }
+  .sh-cfs-well-label--id10t { color: var(--sh-teal); }
+  .sh-cfs-vs {
+    font-size: clamp(10px, 2.4vw, 13px);
+    color: rgba(159,184,195,.3);
+    font-weight: 300;
+    letter-spacing: .1em;
+  }
+  .sh-cfs-well--winner .sh-cfs-card-bg {
+    stroke: var(--sh-gold);
+    stroke-width: 1.8;
+    animation: sh-cfs-winner-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes sh-cfs-winner-pulse {
+    0%,100% { filter: drop-shadow(0 0 4px rgba(201,168,76,.35)); }
+    50%     { filter: drop-shadow(0 0 14px rgba(201,168,76,.75)); }
+  }
+
+  .sh-cfs-result { margin-bottom: 6px; }
+  .sh-cfs-result-reason {
+    font-family: ui-monospace, monospace;
+    font-size: clamp(11px, 2.6vw, 13px);
+    letter-spacing: .04em;
+    color: rgba(232,246,248,.78);
+    margin-bottom: 6px;
+  }
+  .sh-cfs-result-verdict {
+    font-size: clamp(14px, 3.4vw, 18px);
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: var(--sh-gold);
+    text-shadow: 0 0 20px rgba(201,168,76,.4);
+  }
+  .sh-cfs-result--tie { font-size: clamp(11px, 2.6vw, 13px); color: rgba(159,184,195,.6); letter-spacing: .1em; }
+
+  /* Running match score — added by the demo harness (not part of the core
+     widget's own contract) so a Best of 3/5 player can see the tally. Sits
+     right under the YOU WIN / ID-10T WINS verdict so the two plainly read
+     together; stays hidden for a Single Throw, where there's nothing to
+     tally, and during picks/countdown it simply has nothing above it yet. */
+  .sh-cfs-score {
+    margin-top: 6px;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(11px, 2.6vw, 13px);
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: rgba(232,246,248,.7);
+  }
+  .sh-cfs-score[hidden] { display: none; }
+  .sh-cfs-score strong { color: var(--sh-gold); }
+
+  /* Heads-up shown only ahead of a true decider (both players one win away
+     in a Best of 3/5) — added by the harness between the result and the
+     Next Throw button, so it reads before the player clicks through. */
+  .sh-cfs-decider-note {
+    margin-top: 14px;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(10px, 2.4vw, 12px);
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--sh-gold);
+    text-shadow: 0 0 16px rgba(201,168,76,.35);
+  }
+  .sh-cfs-decider-note[hidden] { display: none; }
+
+  .sh-cfs-continue {
+    margin-top: 18px;
+    padding: 13px 32px;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    font-size: clamp(11px, 2.5vw, 14px);
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    border: 2px solid rgba(201,168,76,.6);
+    border-radius: 8px;
+    background: rgba(201,168,76,.08);
+    color: var(--sh-gold);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity .4s ease, transform .4s ease;
+    pointer-events: none;
+  }
+  .sh-cfs-continue--ready {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    animation: sh-go-pulse 2.2s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hidden SVG defs: the hex-card frame + the three hand-gesture glyphs
+     (closed fist = Coins/Rock, open hand = Flasks/Paper, two-finger
+     scissors = Sabers/Scissors), copied verbatim from the full game. -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+<defs>
+
+<symbol id="sh-hex-card" viewBox="0 0 29.5 46.5" overflow="visible">
+  <path d="M18.98.56h-8.9c-1.44,0-2.71.94-3.13,2.32L1.06,22.11c-.19.62-.19,1.29,0,1.92l5.88,19.22c.42,1.38,1.69,2.32,3.13,2.32h8.9c1.44,0,2.71-.94,3.13-2.32l5.88-19.22c.19-.62.19-1.29,0-1.92L22.11,2.88c-.42-1.38-1.69-2.32-3.13-2.32Z"/>
+</symbol>
+
+<symbol id="c-f-s-flask-paper-hand" viewBox="-2.1 -4.4 95.8 113.3" overflow="visible">
+<g>
+      <path class="sh-asset" d="M52.46,49.85V10.35c0-.27.38-1.21,1.19-2.06h-3.19v40.06c0,.17,1.35,1.58,2,1.5Z"/>
+      <path class="sh-asset" d="M27.46,48.35c0,.17,1.35,1.58,2,1.5V10.35c0-.24.03-.47.07-.68.09-.51.27-.97.53-1.38H.92v89.83h27.54v-6.77c0-.57-6.47-4.64-8.21-7.79-1.76-3.2-2.54-7.55-2.83-11.17-.73-9.39-1.49-42.93.25-50.82.45-2.06,2.13-4.44,4.34-4.75.4-.2.97-.18,1.6-.04.53.06,1.07.22,1.61.58"/>
+      <polyline class="sh-asset" points="39.46 49.35 40.46 49.85 40.46 8.29 38.08 8.29"/>
+      <path class="sh-asset" d="M90.75,8.29h-29.51c.82.77,1.22,1.63,1.22,2.06v39.5c.65.08,2-1.33,2-1.5v-16c.15-5.74,8.1-6.84,9.56-1.59,1.52,5.44,1.07,34.7.47,41.63-.44,5.14-1.97,10.67-5.5,14.5-1.04,1.12-5.54,3.72-5.54,4.46v6.77h27.29V8.29Z"/>
+      <path class="sh-asset" d="M25.23,17.35c.84.57,1.64,1.63,2.23,3.56v27.44"/>
+      <path class="sh-asset" d="M29.54,9.66c-.04.21-.07.44-.07.68,0-.24.04-.46.07-.68Z"/>
+      <path class="sh-asset" d="M69,86.88c3.53-3.83,5.06-9.36,5.5-14.5.6-6.93,1.05-36.19-.47-41.63-1.47-5.25-9.41-4.15-9.56,1.59v16c0,.17-1.35,1.58-2,1.5V10.35c0-.43-.39-1.29-1.22-2.06-.83-.77-2.1-1.44-3.85-1.49-.13,0-.25-.01-.38,0-1.52.04-2.62.73-3.36,1.49-.82.85-1.19,1.79-1.19,2.06v39.5c-.65.08-2-1.33-2-1.5V3.35c0-3.31-10-4.78-10,2v44.5l-1-.5-1-.5V10.35c-.04-.92-.31-1.66-.71-2.26-1.72-2.62-6.09-2.3-7.69.2-.26.4-.44.86-.53,1.38-.04.22-.07.44-.07.68v39.5c-.65.08-2-1.33-2-1.5v-27.44c-.6-1.93-1.4-2.99-2.24-3.56-.53-.36-1.08-.52-1.61-.58-.58-.07-1.13-.01-1.6.04-2.21.31-3.89,2.69-4.34,4.75-1.74,7.89-.98,41.43-.25,50.82.28,3.62,1.07,7.97,2.83,11.17,1.73,3.15,8.21,7.23,8.21,7.79v14.5h35v-14.5c0-.74,4.5-3.34,5.54-4.46Z"/>
+    </g>
+</symbol>
+
+<symbol id="c-f-s-coin-rock-hand" viewBox="-2.1 -2.4 105.5 101.0" overflow="visible">
+<g>
+      <path class="sh-asset" d="M52.97.56C35.91.56,20.97,9.56,12.59,23.05c3.47.25,6.75.39,8.83-.21.61-.18,2.36-2.73,3.56-3.44,6.89-4.02,30.79-10.83,35.8-2.93,2.06,3.24,6.39,29.82,4.67,32.4-3.26,4.89-11.19.23-13.33-4.75-1.67-3.89-.93-10.49-4.7-12.3-.22,2.48,1.61,5.06,1.54,7.56-.16,5.37-15.68,13.64-21.04,9.45-.39,2.22.17,2,1.95,2.5,9.27,2.62,18.39-7.78,19.53-7.5,2.14,2.66,2.34,6.55,6.51,7.02l-.02,1.44c-3.79,3.46-4.98,5.91-2.74,10.81.6,1.32,2.56,2.61,2.7,3.36.21,1.17-7.8,9.24-.93,14.36h-18.5c-3.39,0-13.21-7-14-7h-9.34c8.46,13.07,23.16,21.72,39.89,21.72,26.23,0,47.5-21.27,47.5-47.5S79.2.56,52.97.56ZM66.92,36.84h19.5c5.86,0,6.39,14-2,14h-17.5c2.15-4.5.71-9.4,0-14ZM64.92,20.84h17.5c6.36,0,11.75,12.93-.95,14.05-2.2.19-13.59.26-14.62-.48l-1.93-13.57ZM85.66,79.58c-1.85,1.76-23.69,1.81-27.03,1.04-7-1.61-5.53-11.12,1-12.57,3.24-.72,19.32-.72,22.57,0,5.12,1.13,7.17,8,3.46,11.53ZM83.36,65.78c-3.84.6-20.15.65-23.72-.15-6.55-1.46-7.98-10.96-1-12.57,2.85-.66,24.04-.73,26.57,0,5.52,1.59,5.28,11.6-1.85,12.73Z"/>
+      <path class="sh-asset" d="M36.42,80.84h18.5c-6.87-5.12,1.14-13.19.93-14.36-.14-.76-2.1-2.04-2.7-3.36-2.24-4.91-1.05-7.36,2.74-10.81l.02-1.44c-4.16-.47-4.37-4.35-6.51-7.02-1.14-.28-10.26,10.12-19.53,7.5-1.78-.5-2.34-.28-1.95-2.5,5.36,4.19,20.88-4.08,21.04-9.45.08-2.5-1.76-5.08-1.54-7.56,3.77,1.81,3.03,8.41,4.7,12.3,2.14,4.97,10.07,9.63,13.33,4.75,1.72-2.58-2.62-29.16-4.67-32.4-5.01-7.9-28.91-1.09-35.8,2.93-1.21.7-2.95,3.26-3.56,3.44-2.08.6-5.36.46-8.83.21-4.22-.3-8.72-.75-11.67-.21v51h21.5c.79,0,10.61,7,14,7Z"/>
+      <path class="sh-asset" d="M85.21,53.05c-2.53-.73-23.73-.65-26.57,0-6.98,1.61-5.55,11.11,1,12.57,3.57.8,19.89.76,23.72.15,7.13-1.12,7.37-11.14,1.85-12.73Z"/>
+      <path class="sh-asset" d="M82.2,68.06c-3.25-.72-19.33-.73-22.57,0-6.53,1.46-8,10.96-1,12.57,3.34.77,25.18.71,27.03-1.04,3.71-3.53,1.66-10.39-3.46-11.53Z"/>
+      <path class="sh-asset" d="M81.47,34.89c12.7-1.12,7.31-14.05.95-14.05h-17.5l1.93,13.57c1.03.74,12.41.67,14.62.48Z"/>
+      <path class="sh-asset" d="M84.42,50.84c8.39,0,7.86-14,2-14h-19.5c.71,4.6,2.15,9.5,0,14h17.5Z"/>
+    </g>
+</symbol>
+
+<symbol id="c-f-s-saber-scissor-hand" viewBox="-2.1 -2.4 115.5 112.6" overflow="visible">
+<g>
+      <polygon class="sh-asset" points="55.67 .56 46.7 16.11 64.65 16.11 55.67 .56"/>
+      <path class="sh-asset" d="M40.87,62.2c4.72-.12,13.71,3.51,19.03,3.6.85,1-.45,6.99-.29,8.9.47,5.77,4.14,14.19,5.67,20.7h45.14l-26.51-45.92v4.71c-4.01-3.24-8.1-2.33-11.07,1.75-2.47-5.64-6.83-2.57-10.51-2.9-1.99-.18-5-2.88-7.64-2.4.13-2.42,2.52-3.46,3.73-5.57,1.72-3,4.49-9.81.71-12.14,1.44,4.33-2.31,15.63-6.83,16.68-2.51.59-6.11-3.13-7.35.14,5.01,1.42,18.27,2.26,19.47,8.45,1.39,7.16-2.64,6.1-7.34,5.57-4.51-.5-21.36-3.04-24.1-5.14-3.81-2.92-3.13-9.95-1.64-15.91L.92,95.4h29.94l8.32-32.36c.39-.71.93-.81,1.68-.83ZM73.67,58.56c1.51-6.26,9.26-6.18,10.22-1.25.53,2.71.35,20.04-1.07,21.47-1.44,1.44-5.47,1.36-7.17.28-3.2-2.04-2.86-16.85-1.98-20.49ZM61.96,65.88c.25-.42,1.85-.63,2.49-1.45,3.55-4.52-.6-9.47-.02-10.24,10.13-3.94,8.81,15.92,7.92,21.64-.99,6.37-9.02,7.13-10.41,2.54-.4-1.31-.43-11.76.02-12.5Z"/>
+      <path class="sh-asset" d="M42.12,95.4h11.77l-6.27-21.71c-1.62,3.27-3.5,13.87-5.49,21.71Z"/>
+      <path class="sh-asset" d="M32.97,58.63c2.74,2.1,19.59,4.64,24.1,5.14,4.7.53,8.73,1.58,7.34-5.57-1.2-6.19-14.46-7.03-19.47-8.45,1.24-3.26,4.84.45,7.35-.14,4.51-1.05,8.27-12.35,6.83-16.68,3.78,2.33,1.01,9.14-.71,12.14-1.2,2.1-3.6,3.15-3.73,5.57,2.64-.48,5.65,2.22,7.64,2.4,3.69.34,8.05-2.74,10.51,2.9,2.97-4.08,7.06-4.99,11.07-1.75v-14.61c0-2.59-5.31-10.03-5.31-10.63v-12.84h-39.86c-.42,3.27.7,7.85-.19,10.89-.42,1.46-3.99,5.9-5.15,9.03-.65,1.75-1.44,4.13-2.08,6.71-1.49,5.96-2.17,12.99,1.64,15.91Z"/>
+      <path class="sh-asset" d="M59.61,74.7c-.15-1.91,1.14-7.9.29-8.9-5.32-.08-14.31-3.72-19.03-3.6-.75.02-1.29.12-1.68.83l-8.32,32.36-.94,3.65c-.52,4.47,5,8.05,8.78,5.14,1.16-.9,2.31-4.42,3.42-8.79,1.99-7.84,3.87-18.45,5.49-21.71l6.27,21.71,2.16,7.48c2.85,4.25,9.98,1.89,9.91-2.9-.02-1.35-.28-2.9-.68-4.58-1.54-6.51-5.21-14.93-5.67-20.7Z"/>
+      <path class="sh-asset" d="M75.65,79.05c1.7,1.08,5.72,1.17,7.17-.28,1.42-1.42,1.6-18.75,1.07-21.47-.96-4.93-8.71-5.01-10.22,1.25-.88,3.64-1.22,18.45,1.98,20.49Z"/>
+      <path class="sh-asset" d="M72.35,75.84c.89-5.72,2.21-25.58-7.92-21.64-.57.77,3.57,5.71.02,10.24-.64.82-2.24,1.03-2.49,1.45-.45.74-.41,11.19-.02,12.5,1.39,4.59,9.41,3.83,10.41-2.54Z"/>
+    </g>
+</symbol>
+
+</defs>
+</svg>
+
+<!-- Demo harness — not part of the real game, just lets this page run the
+     widget on its own: a title, a Throw button, and a running log. -->
+<div class="demo-shell" id="demo-shell">
+  <div class="demo-eyebrow">From Smuggler's Hold · Skeleton Crew Edition</div>
+  <h1 class="demo-title">COINS · FLASKS · SABERS</h1>
+  <p class="demo-desc">A standalone, general-purpose tiebreaker: a rock/paper/scissors style throw-down — Coins beat Flasks, Flasks beat Sabers, Sabers beat Coins — with a "Three! Two! One! THROW!" countdown and sound.</p>
+
+  <div class="demo-format-row">
+    <span>Match format</span>
+    <div class="demo-format-toggle">
+      <button class="demo-format-btn active" id="demo-format-single" type="button" data-format="single">Single Throw</button>
+      <button class="demo-format-btn" id="demo-format-bo3" type="button" data-format="bo3">Best of 3</button>
+      <button class="demo-format-btn" id="demo-format-bo5" type="button" data-format="bo5">Best of 5</button>
+    </div>
+  </div>
+
+  <button class="demo-throw-btn" id="demo-throw-btn" type="button">Throw Down</button>
+  <div class="demo-scoreboard" id="demo-scoreboard"></div>
+  <div class="demo-round-tracker" id="demo-round-tracker"></div>
+  <div class="demo-log" id="demo-log"></div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Minimal sound engine ──────────────────────────────────────────────
+  // Trimmed from the full game's SHAudio module down to just the three
+  // sounds this widget uses: cfsOpen (popup entrance), cfsPop (each of the
+  // three count beats), cfsThrow (the payoff beat). Pure Web Audio API —
+  // no audio files.
+  window.SHAudio = (function(){
+    const P = {
+      blip: {
+        cfsPop:   { f:173, decay:0.11, gain:0.17, glide:15 },
+        cfsThrow: { f:260, decay:0.16, gain:0.20, glide:35 },
+      },
+      sweep: { f1:155, f2:207, dur:0.46, gain:0.16 },
+      detune: 7,
+    };
+
+    let AC, masterGain;
+
+    function init(){
+      if (AC) return;
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = AC.createGain();
+      masterGain.gain.value = 0.75;
+      masterGain.connect(AC.destination);
+    }
+    function resume(){
+      if (!AC) return;
+      if (AC.state === 'suspended') {
+        try { const p = AC.resume(); if (p && typeof p.catch === 'function') p.catch(() => {}); } catch(_){}
+      }
+    }
+
+    function _pair(f, det, type='sine'){
+      const o1 = AC.createOscillator(), o2 = AC.createOscillator();
+      o1.type = o2.type = type;
+      o1.frequency.value = f;
+      o2.frequency.value = f * Math.pow(2, det / 1200);
+      return [o1, o2];
+    }
+
+    function _blip(f, decay, gain, glide=0){
+      if (!AC) return;
+      try {
+        const now = AC.currentTime, det = P.detune;
+        const [o1,o2] = _pair(f, det);
+        const g = AC.createGain();
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(gain, now + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.003 + decay);
+        if (glide) {
+          const t = f - glide;
+          o1.frequency.exponentialRampToValueAtTime(t, now + decay * 0.72);
+          o2.frequency.exponentialRampToValueAtTime(t * Math.pow(2, det / 1200), now + decay * 0.72);
+        }
+        o1.connect(g); o2.connect(g); g.connect(masterGain);
+        const stop = now + decay + 0.07;
+        o1.start(now); o2.start(now); o1.stop(stop); o2.stop(stop);
+      } catch(e) {}
+    }
+
+    function _nclick(dur, gain, fc=1600){
+      if (!AC) return;
+      try {
+        const now = AC.currentTime;
+        const nb = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+        const d = nb.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+        const src = AC.createBufferSource(); src.buffer = nb;
+        const bf = AC.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = fc; bf.Q.value = 1.2;
+        const g = AC.createGain();
+        g.gain.setValueAtTime(gain, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        src.connect(bf); bf.connect(g); g.connect(masterGain); src.start(now);
+      } catch(e) {}
+    }
+
+    function _sweep(f1, f2, dur, gain){
+      if (!AC) return;
+      try {
+        const now = AC.currentTime, det = 5;
+        const [o1,o2] = _pair(f1, det);
+        const sub = AC.createOscillator(); sub.frequency.value = f1 * 0.5;
+        [o1,o2].forEach(o => {
+          o.frequency.exponentialRampToValueAtTime(f2, now + dur * 0.58);
+          o.frequency.exponentialRampToValueAtTime(f1 * 0.80, now + dur);
+        });
+        const g = AC.createGain();
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(gain, now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        const sg = AC.createGain();
+        sg.gain.setValueAtTime(gain * 0.32, now);
+        sg.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        o1.connect(g); o2.connect(g); g.connect(masterGain);
+        sub.connect(sg); sg.connect(masterGain);
+        const stop = now + dur + 0.06;
+        [o1,o2,sub].forEach(o => { o.start(now); o.stop(stop); });
+      } catch(e) {}
+    }
+
+    const api = {
+      play(event, opts={}) {
+        if (!AC) init();
+        resume();
+        const fn = api[event];
+        if (typeof fn === 'function') fn(opts);
+      },
+      cfsOpen(){ _sweep(P.sweep.f1, P.sweep.f2, P.sweep.dur, P.sweep.gain); },
+      cfsPop(){ const b = P.blip.cfsPop; _blip(b.f, b.decay, b.gain, b.glide); },
+      cfsThrow(){ const b = P.blip.cfsThrow; _nclick(0.03, 0.22, 1800); setTimeout(() => _blip(b.f, b.decay, b.gain, b.glide), 30); },
+    };
+    return api;
+  })();
+
+  // Safe sound trigger — never throws, no game-state dependency here.
+  function snd(event, opts) {
+    try { if (window.SHAudio) window.SHAudio.play(event, opts || {}); } catch(e) {}
+  }
+
+  // ── CFS — Coins / Flasks / Sabers Hold tiebreaker widget ───────────────
+  // Copied verbatim from the full game's window.openCFSRoller(), minus the
+  // game-specific HUD/state hooks (ensureHudDrawn(), shState.cfsActive) that
+  // don't apply outside the full engine. Resolves {winner:'p1'|'p2', reason}
+  // or {winner:'cancel'}.
+  window.__cfsSvg = window.__cfsSvg || { active:false, p1:null, p2:null, winner:null, reason:'', resolve:null };
+  var __cfsSvg = window.__cfsSvg;
+
+  const CFS_SUIT_SYMBOL = { COINS:'c-f-s-coin-rock-hand', FLASKS:'c-f-s-flask-paper-hand', SABERS:'c-f-s-saber-scissor-hand' };
+  const CFS_SUIT_LABEL  = { COINS:'Coins', FLASKS:'Flasks', SABERS:'Sabers' };
+  const CFS_BEATS_REASON = {
+    'COINS>FLASKS':  'Coin buys Flask',
+    'FLASKS>SABERS': 'Flask shorts Saber',
+    'SABERS>COINS':  'Saber melts Coin'
+  };
+  function cfsBeats(x, y) {
+    return (x === 'COINS'  && y === 'FLASKS')
+        || (x === 'FLASKS' && y === 'SABERS')
+        || (x === 'SABERS' && y === 'COINS');
+  }
+  function cfsPick() {
+    const opts = ['COINS','FLASKS','SABERS'];
+    return opts[Math.floor(Math.random() * 3)];
+  }
+  function cfsDecide(p1Choice, id10tChoice) {
+    if (p1Choice === id10tChoice) return { winner:null, reason:'' };
+    if (cfsBeats(p1Choice, id10tChoice)) return { winner:'p1', reason: CFS_BEATS_REASON[p1Choice+'>'+id10tChoice] };
+    return { winner:'p2', reason: CFS_BEATS_REASON[id10tChoice+'>'+p1Choice] };
+  }
+
+  function cfsCardSvg(choice, extraClass) {
+    const sym = CFS_SUIT_SYMBOL[choice];
+    return '<svg viewBox="0 0 29.5 46.5" class="sh-cfs-card-svg ' + (extraClass||'') + '">'
+      + '<use href="#sh-hex-card" width="29.5" height="46.5" class="sh-cfs-card-bg"/>'
+      + '<svg x="3.75" y="11" width="22" height="22">'
+      +   '<use href="#' + sym + '" width="100%" height="100%" class="sh-cfs-card-icon"/>'
+      + '</svg></svg>';
+  }
+  function cfsCardBackSvg() {
+    return '<svg viewBox="0 0 29.5 46.5" class="sh-cfs-card-svg sh-cfs-card-svg--back">'
+      + '<use href="#sh-hex-card" width="29.5" height="46.5" class="sh-cfs-card-bg sh-cfs-card-bg--back"/>'
+      + '</svg>';
+  }
+
+  function buildCFSOverlay() {
+    const existing = document.getElementById('sh-cfs-overlay');
+    if (existing) return existing;
+    const ov = document.createElement('div');
+    ov.id = 'sh-cfs-overlay';
+    ov.innerHTML =
+      '<div class="sh-cfs-eyeline">TIEBREAKER THROW-DOWN</div>'
+      + '<div class="sh-cfs-title">COINS <span>&middot;</span> FLASKS <span>&middot;</span> SABERS</div>'
+      + '<div class="sh-cfs-sub" id="sh-cfs-sub"></div>'
+      + '<div class="sh-cfs-picks" id="sh-cfs-picks">'
+      +   '<button class="sh-cfs-pick" data-choice="COINS" type="button">'  + cfsCardSvg('COINS')  + '<span>Coins</span></button>'
+      +   '<button class="sh-cfs-pick" data-choice="FLASKS" type="button">' + cfsCardSvg('FLASKS') + '<span>Flasks</span></button>'
+      +   '<button class="sh-cfs-pick" data-choice="SABERS" type="button">' + cfsCardSvg('SABERS') + '<span>Sabers</span></button>'
+      + '</div>'
+      + '<div class="sh-cfs-reveal" id="sh-cfs-reveal" hidden>'
+      +   '<div class="sh-cfs-well sh-cfs-well--you">'
+      +     '<div class="sh-cfs-card-slot" id="sh-cfs-card-you"></div>'
+      +     '<span class="sh-cfs-well-label sh-cfs-well-label--you">YOU</span>'
+      +   '</div>'
+      +   '<div class="sh-cfs-vs">VS</div>'
+      +   '<div class="sh-cfs-well sh-cfs-well--id10t">'
+      +     '<div class="sh-cfs-card-slot" id="sh-cfs-card-id10t"></div>'
+      +     '<span class="sh-cfs-well-label sh-cfs-well-label--id10t">ID-10T</span>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="sh-cfs-result" id="sh-cfs-result" hidden></div>'
+      + '<div class="sh-cfs-score" id="sh-cfs-score" hidden></div>'
+      + '<div class="sh-cfs-decider-note" id="sh-cfs-decider-note" hidden></div>'
+      + '<button class="sh-cfs-continue" id="sh-cfs-continue" type="button" hidden>CONTINUE</button>';
+    document.body.appendChild(ov);
+    return ov;
+  }
+
+  window.openCFSRoller = () => new Promise((resolve) => {
+    snd('cfsOpen');
+
+    __cfsSvg.active = true;
+    __cfsSvg.p1 = null;
+    __cfsSvg.p2 = null;
+    __cfsSvg.winner = null;
+    __cfsSvg.reason = '';
+    __cfsSvg.resolve = resolve;
+
+    let ov;
+    try { ov = buildCFSOverlay(); } catch(e) {
+      console.error('[CFS] failed to build popup', e);
+      __cfsSvg.active = false;
+      resolve({winner:'cancel'});
+      return;
+    }
+
+    const picksEl    = document.getElementById('sh-cfs-picks');
+    const revealEl   = document.getElementById('sh-cfs-reveal');
+    const subEl      = document.getElementById('sh-cfs-sub');
+    const resultEl   = document.getElementById('sh-cfs-result');
+    const continueEl = document.getElementById('sh-cfs-continue');
+    const youSlot    = document.getElementById('sh-cfs-card-you');
+    const id10tSlot  = document.getElementById('sh-cfs-card-id10t');
+    const youWell    = ov.querySelector('.sh-cfs-well--you');
+    const id10tWell  = ov.querySelector('.sh-cfs-well--id10t');
+
+    const rollId = (__cfsSvg._rollId = (__cfsSvg._rollId || 0) + 1);
+    const stillCurrent = () => rollId === __cfsSvg._rollId;
+    let settled = false;
+
+    function resetToPicking() {
+      picksEl.hidden = false;
+      revealEl.hidden = true;
+      resultEl.hidden = true;
+      resultEl.className = 'sh-cfs-result';
+      continueEl.hidden = true;
+      continueEl.classList.remove('sh-cfs-continue--ready');
+      subEl.classList.remove('sh-cfs-sub--throw');
+      subEl.textContent = 'Coins beat Flasks · Flasks beat Sabers · Sabers beat Coins. Pick your throw.';
+      Array.from(picksEl.querySelectorAll('.sh-cfs-pick')).forEach(b => { b.disabled = false; });
+      youSlot.innerHTML = '';
+      id10tSlot.innerHTML = '';
+      youWell.classList.remove('sh-cfs-well--winner', 'sh-cfs-well--pop');
+      id10tWell.classList.remove('sh-cfs-well--winner', 'sh-cfs-well--pop');
+    }
+    resetToPicking();
+
+    function close(res) {
+      if (settled) return;
+      settled = true;
+      ov.classList.remove('sh-cfs-visible');
+      setTimeout(() => { if (ov.parentNode && !__cfsSvg.active) ov.parentNode.removeChild(ov); }, 550);
+      __cfsSvg.active = false;
+      __cfsSvg.resolve = null;
+      resolve(res);
+    }
+
+    // The physical ritual: both throws stay hidden through a 1-2-3 count,
+    // then reveal together on "THROW!" — not one card flipping early while
+    // the other waits, which would give nothing away to build on.
+    const CFS_BEAT_GAP   = 420; // ms between each "pop" (and from the last pop to THROW)
+    const CFS_BEAT_COUNT = 3;
+    const CFS_THROW_HOLD = 550; // ms both cards sit revealed-but-unjudged under "THROW!" before the verdict
+
+    const CFS_COUNTDOWN_WORDS = ['Three!', 'Two!', 'One!'];
+
+    function pulseWells() {
+      [youWell, id10tWell].forEach(w => {
+        w.classList.remove('sh-cfs-well--pop');
+        void w.offsetWidth; // restart the keyframe even on back-to-back beats
+        w.classList.add('sh-cfs-well--pop');
+      });
+    }
+
+    // Same pop-in treatment for every beat of the countdown (Three! Two!
+    // One! THROW!) — removing then re-adding the class restarts the
+    // animation each time instead of it only playing once.
+    function pulseCountdownText(word) {
+      subEl.classList.remove('sh-cfs-sub--throw');
+      void subEl.offsetWidth;
+      subEl.textContent = word;
+      subEl.classList.add('sh-cfs-sub--throw');
+    }
+
+    function onPick(p1Choice) {
+      if (!stillCurrent() || settled) return;
+      Array.from(picksEl.querySelectorAll('.sh-cfs-pick')).forEach(b => { b.disabled = true; });
+
+      const id10tChoice = cfsPick(); // independent RNG — never looks at p1Choice
+      picksEl.hidden = true;
+      revealEl.hidden = false;
+      subEl.classList.remove('sh-cfs-sub--throw');
+
+      // Both wells stay face-down through the whole count — no peeking.
+      youSlot.innerHTML = cfsCardBackSvg();
+      id10tSlot.innerHTML = cfsCardBackSvg();
+
+      for (let i = 0; i < CFS_BEAT_COUNT; i++) {
+        setTimeout(() => {
+          if (!stillCurrent()) return;
+          snd('cfsPop');
+          pulseWells();
+          pulseCountdownText(CFS_COUNTDOWN_WORDS[i] || '');
+        }, i * CFS_BEAT_GAP);
+      }
+
+      setTimeout(() => {
+        if (!stillCurrent()) return;
+        snd('cfsThrow');
+        pulseCountdownText('THROW!');
+        youSlot.innerHTML = cfsCardSvg(p1Choice, 'sh-cfs-card--flip-in sh-cfs-card--you');
+        id10tSlot.innerHTML = cfsCardSvg(id10tChoice, 'sh-cfs-card--flip-in sh-cfs-card--id10t');
+        // Hold on "THROW!" with both throws visible but unjudged for a beat
+        // before settling — otherwise the win/tie text replaces it in the
+        // same tick and it never actually gets to paint.
+        setTimeout(() => {
+          if (!stillCurrent()) return;
+          settleThrow(p1Choice, id10tChoice);
+        }, CFS_THROW_HOLD);
+      }, CFS_BEAT_COUNT * CFS_BEAT_GAP);
+    }
+
+    function settleThrow(p1Choice, id10tChoice) {
+      const decision = cfsDecide(p1Choice, id10tChoice);
+
+      if (!decision.winner) {
+        subEl.classList.remove('sh-cfs-sub--throw');
+        subEl.textContent = 'Tie! Both throw again.';
+        resultEl.hidden = false;
+        resultEl.className = 'sh-cfs-result sh-cfs-result--tie';
+        resultEl.textContent = CFS_SUIT_LABEL[p1Choice].toUpperCase() + ' × ' + CFS_SUIT_LABEL[id10tChoice].toUpperCase() + ' — TIE';
+        setTimeout(() => { if (stillCurrent()) resetToPicking(); }, 1300);
+        return;
+      }
+
+      const winner = decision.winner; // 'p1' | 'p2'
+      __cfsSvg.winner = winner;
+      __cfsSvg.p1 = p1Choice;
+      __cfsSvg.p2 = id10tChoice;
+      __cfsSvg.reason = decision.reason;
+
+      (winner === 'p1' ? youWell : id10tWell).classList.add('sh-cfs-well--winner');
+
+      subEl.classList.remove('sh-cfs-sub--throw');
+      subEl.textContent = '';
+      resultEl.hidden = false;
+      resultEl.className = 'sh-cfs-result sh-cfs-result--' + (winner === 'p1' ? 'you' : 'id10t');
+      const winVerdict = winner === 'p1' ? 'YOU WIN' : 'ID-10T WINS';
+      resultEl.innerHTML =
+        '<div class="sh-cfs-result-reason">' + decision.reason + '</div>'
+        + '<div class="sh-cfs-result-verdict">' + winVerdict + '</div>';
+
+      setTimeout(() => {
+        if (!stillCurrent()) return;
+        continueEl.hidden = false;
+        requestAnimationFrame(() => { continueEl.classList.add('sh-cfs-continue--ready'); });
+      }, 1500);
+    }
+
+    Array.from(picksEl.querySelectorAll('.sh-cfs-pick')).forEach(btn => {
+      btn.addEventListener('click', () => onPick(btn.getAttribute('data-choice')));
+    });
+    continueEl.addEventListener('click', () => {
+      const winner = (__cfsSvg.winner === 'p1' || __cfsSvg.winner === 'p2') ? __cfsSvg.winner : 'cancel';
+      close(winner === 'cancel' ? {winner:'cancel'} : {winner, reason: __cfsSvg.reason});
+    });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { ov.classList.add('sh-cfs-visible'); });
+    });
+  });
+
+  // ── Demo harness wiring ─────────────────────────────────────────────
+  // Not part of the real game — just lets this standalone page run a
+  // best-of-3 / best-of-5 match on top of the widget's own single-throw
+  // primitive (window.openCFSRoller()), which is left completely
+  // untouched. Each call already absorbs its own ties internally and
+  // only resolves once a throw actually decides that round, so a "round"
+  // here is exactly one call to it.
+  const throwBtn    = document.getElementById('demo-throw-btn');
+  const logEl       = document.getElementById('demo-log');
+  const scoreboardEl = document.getElementById('demo-scoreboard');
+  const roundTrackerEl = document.getElementById('demo-round-tracker');
+  const formatBtns  = Array.from(document.querySelectorAll('.demo-format-btn'));
+
+  const BO_FORMAT = {
+    single: { label: 'Single Throw', winsNeeded: 1 },
+    bo3:    { label: 'Best of 3', winsNeeded: 2 },
+    bo5:    { label: 'Best of 5', winsNeeded: 3 },
+  };
+  let matchFormat = 'single';
+  let matchScore = { p1: 0, p2: 0 };
+  let matchActive = false;
+  let roundNum = 0;
+  let matchResults = []; // 'p1' | 'p2' per round already decided, in order
+
+  function renderScoreboard() {
+    const cfg = BO_FORMAT[matchFormat];
+    scoreboardEl.innerHTML = cfg.label + ' &middot; <strong>YOU ' + matchScore.p1 + '</strong> — <strong>' + matchScore.p2 + ' ID-10T</strong>';
+  }
+  renderScoreboard();
+
+  // One pip per round the current format can go to (3 for best-of-3, 5 for
+  // best-of-5); a single throw has nothing to track, so the row stays
+  // empty — :empty collapses it rather than reserving blank space.
+  function renderRoundTracker() {
+    const cfg = BO_FORMAT[matchFormat];
+    if (cfg.winsNeeded <= 1) { roundTrackerEl.innerHTML = ''; return; }
+    const maxRounds = cfg.winsNeeded * 2 - 1;
+    // Before the first throw, point at round 1 (not "round 0"); otherwise
+    // the current/next round, capped at the format's last possible round.
+    const roundOn = (matchResults.length === 0 && !matchActive) ? 1 : Math.min(matchResults.length + (matchActive ? 1 : 0), maxRounds);
+    let html = '<span class="demo-round-label">Round ' + roundOn + ' of ' + maxRounds + '</span>';
+    for (let i = 0; i < maxRounds; i++) {
+      const res = matchResults[i];
+      if (res === 'p1') {
+        html += '<span class="demo-round-pip demo-round-pip--you" title="Round ' + (i + 1) + ': YOU">Y</span>';
+      } else if (res === 'p2') {
+        html += '<span class="demo-round-pip demo-round-pip--id10t" title="Round ' + (i + 1) + ': ID-10T">I</span>';
+      } else if (matchActive && i === matchResults.length) {
+        html += '<span class="demo-round-pip demo-round-pip--current" title="Round ' + (i + 1) + ': in progress">' + (i + 1) + '</span>';
+      } else {
+        html += '<span class="demo-round-pip" title="Round ' + (i + 1) + '">' + (i + 1) + '</span>';
+      }
+    }
+    roundTrackerEl.innerHTML = html;
+  }
+  renderRoundTracker();
+
+  function setFormat(fmt) {
+    if (matchActive || !BO_FORMAT[fmt]) return;
+    matchFormat = fmt;
+    matchResults = []; // a new format starts its own round history, not the last format's
+    formatBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-format') === fmt));
+    renderScoreboard();
+    renderRoundTracker();
+  }
+  formatBtns.forEach(btn => {
+    btn.addEventListener('click', () => setFormat(btn.getAttribute('data-format')));
+  });
+
+  function logLine(text) {
+    logEl.innerHTML = text + '<br>' + logEl.innerHTML;
+  }
+
+  // Keeps the running score visible *inside* the popup itself — the
+  // harness's own scoreboard/tracker sit on the page behind it, which the
+  // popup mostly covers while open. Hidden entirely for a Single Throw,
+  // where there's no running score to show.
+  // overrideP1/overrideP2 let the result-reveal moment show the score the
+  // throw just decided, without waiting on the widget's own promise (which
+  // only resolves — and only then updates the real matchScore — once
+  // Continue is actually clicked).
+  function renderPopupScore(overrideP1, overrideP2) {
+    const el = document.getElementById('sh-cfs-score');
+    if (!el) return;
+    const cfg = BO_FORMAT[matchFormat];
+    if (cfg.winsNeeded <= 1) { el.hidden = true; el.innerHTML = ''; return; }
+    const p1 = overrideP1 !== undefined ? overrideP1 : matchScore.p1;
+    const p2 = overrideP2 !== undefined ? overrideP2 : matchScore.p2;
+    el.hidden = false;
+    el.innerHTML = '<strong>YOU ' + p1 + '</strong> &nbsp;—&nbsp; <strong>' + p2 + ' ID-10T</strong>';
+  }
+
+  // Watches the (untouched) widget's own result panel to figure out, the
+  // instant a throw is decided, whether that result would also decide the
+  // match — then relabels the existing "CONTINUE" button to "NEXT THROW"
+  // when it wouldn't, and surfaces a heads-up ahead of a true decider (both
+  // players one win away). The widget's own button/click logic is never
+  // touched, only text and a sibling note, and only before the player can
+  // click it.
+  function primeContinueLabel(cfg) {
+    const resultEl   = document.getElementById('sh-cfs-result');
+    const continueEl = document.getElementById('sh-cfs-continue');
+    const noteEl      = document.getElementById('sh-cfs-decider-note');
+    if (!resultEl || !continueEl) return;
+    if (noteEl) { noteEl.hidden = true; noteEl.textContent = ''; }
+    const obs = new MutationObserver(() => {
+      if (resultEl.hidden || resultEl.classList.contains('sh-cfs-result--tie')) return;
+      const p1Wins = resultEl.classList.contains('sh-cfs-result--you');
+      const nextP1 = matchScore.p1 + (p1Wins ? 1 : 0);
+      const nextP2 = matchScore.p2 + (p1Wins ? 0 : 1);
+      const decided = nextP1 >= cfg.winsNeeded || nextP2 >= cfg.winsNeeded;
+      continueEl.textContent = decided ? 'CONTINUE' : 'NEXT THROW';
+      renderPopupScore(nextP1, nextP2); // reflect this throw's result immediately, not just on Continue
+      if (noteEl) {
+        const isDecider = !decided && nextP1 === cfg.winsNeeded - 1 && nextP2 === cfg.winsNeeded - 1;
+        noteEl.hidden = !isDecider;
+        noteEl.textContent = isDecider ? 'Next throw decides the match' : '';
+      }
+      obs.disconnect();
+    });
+    obs.observe(resultEl, { attributes: true, attributeFilter: ['hidden', 'class'] });
+  }
+
+  function playRound() {
+    const cfg = BO_FORMAT[matchFormat];
+    roundNum += 1;
+    const thisRound = roundNum;
+    renderRoundTracker(); // mark this round as "in progress" before it opens
+    const p = window.openCFSRoller();
+    renderPopupScore(); // show the standing score inside the popup too
+    primeContinueLabel(cfg);
+    p.then((res) => {
+      if (res.winner === 'cancel') {
+        logLine('<strong>Match cancelled</strong> at ' + matchScore.p1 + '–' + matchScore.p2 + '.');
+        endMatch();
+        return;
+      }
+      matchScore[res.winner] += 1;
+      matchResults.push(res.winner);
+      renderScoreboard();
+      renderRoundTracker();
+      renderPopupScore(); // tick the in-popup score up before Continue is clicked
+      const who = res.winner === 'p1' ? 'YOU' : 'ID-10T';
+      logLine('<strong>Throw ' + thisRound + ':</strong> ' + res.reason + ' — ' + who + ' take it (' + matchScore.p1 + '–' + matchScore.p2 + ')');
+
+      if (matchScore[res.winner] >= cfg.winsNeeded) {
+        logLine('<strong>Match: ' + who + ' win it — ' + cfg.label + ', ' + matchScore.p1 + '–' + matchScore.p2 + '.</strong>');
+        endMatch();
+      } else {
+        playRound();
+      }
+    });
+  }
+
+  function startMatch() {
+    matchScore = { p1: 0, p2: 0 };
+    matchActive = true;
+    roundNum = 0;
+    matchResults = [];
+    renderScoreboard();
+    renderRoundTracker();
+    throwBtn.disabled = true;
+    formatBtns.forEach(b => { b.disabled = true; });
+    playRound();
+  }
+
+  function endMatch() {
+    matchActive = false;
+    throwBtn.disabled = false;
+    formatBtns.forEach(b => { b.disabled = false; });
+    renderRoundTracker();
+  }
+
+  throwBtn.addEventListener('click', startMatch);
+})();
+</script>
+
+</body>
+</html>
